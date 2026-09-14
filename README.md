@@ -1,5 +1,9 @@
 # Saar AI
 
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Tech](https://img.shields.io/badge/Tech-Chrome%20Extension-yellow.svg)](https://developer.chrome.com/docs/extensions/)
+[![AI: On-Device LLM](https://img.shields.io/badge/AI-On--Device%20LLM-purple.svg)](https://developer.chrome.com/docs/ai/)
+
 > A Chrome extension that turns any web page into a focused reading experience — entirely on-device.
 
 Saar AI runs as a side panel in Chrome. It reads the current page, generates concise summaries in multiple formats, answers your questions about the content, and lets you test your understanding with a quiz — without sending any data to the cloud.
