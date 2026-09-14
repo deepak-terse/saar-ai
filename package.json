@@ -1,0 +1,22 @@
+{
+	"name": "saar-ai",
+	"version": "1.0.0",
+	"description": "A Chrome extension that summarizes, explains, and lets you chat with any web page entirely on-device",
+	"main": "vite.config.js",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"preview": "vite preview"
+	},
+	"dependencies": {
+		"react": "^19.1.1",
+		"react-dom": "^19.1.1"
+	},
+	"devDependencies": {
+		"@vitejs/plugin-react": "^5.0.2",
+		"vite": "^7.1.3"
+	},
+	"author": "Deepak Terse",
+	"license": "MIT"
+}
