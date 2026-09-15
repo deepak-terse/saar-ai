@@ -2,7 +2,7 @@
 	"manifest_version": 3,
 	"name": "Saar AI",
 	"version": "1.0.0",
-	"description": "On-device reading assistant for web pages.",
+	"description": "On-device AI reading assistant that summarizes web pages, answers questions, and generates quizzes — with unlimited offline usage and privacy.",
 	"icons": {
 		"16": "icons/icon16.png",
 		"48": "icons/icon48.png",
