@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { extractActiveTabContent } from "../services/chrome";
 
-export function usePageContent({ onBeforeRefresh } = {}) {
+export const usePageContent = ({ onBeforeRefresh } = {}) => {
   const [page, setPage] = useState(null);
   const [banner, setBanner] = useState(null);
   const [loading, setLoading] = useState(true);

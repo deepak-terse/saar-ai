@@ -1,8 +1,6 @@
-export async function extractActiveTabContent() {
-  return chrome.runtime.sendMessage({ type: "EXTRACT_CONTENT" });
-}
+export const extractActiveTabContent = () => chrome.runtime.sendMessage({ type: "EXTRACT_CONTENT" });
 
-export async function getSessionValue(key) {
+export const getSessionValue = async (key) => {
   try {
     const result = await chrome.storage.session.get(key);
     return result[key];
@@ -11,6 +9,4 @@ export async function getSessionValue(key) {
   }
 }
 
-export async function setSessionValue(key, value) {
-  await chrome.storage.session.set({ [key]: value });
-}
+export const setSessionValue = async (key, value) => chrome.storage.session.set({ [key]: value });

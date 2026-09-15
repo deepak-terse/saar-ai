@@ -3,10 +3,10 @@ import { useLayoutEffect, useRef, useState } from "react";
 const tabs = [
     { id: "read", label: "Read" },
     { id: "ask", label: "Ask" },
-    { id: "quiz", label: "Quiz" },
+    { id: "quiz", label: "Quiz" }
 ];
 
-export function Tabs({ activeTab, onChange }) {
+export const Tabs = ({ activeTab, onChange }) => {
     const refs = useRef([]);
     const [indicator, setIndicator] = useState({ left: 0, width: 0 });
 

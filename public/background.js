@@ -1,6 +1,3 @@
-// MV3 service worker.
-// Keep this stateless: Chrome can stop/restart service workers at any time.
-
 chrome.runtime.onInstalled.addListener(() => {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 });
@@ -12,7 +9,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 });
 
-async function extractFromActiveTab() {
+const extractFromActiveTab = async () => {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) return { ok: false, error: "no-active-tab" };
@@ -34,20 +31,20 @@ async function extractFromActiveTab() {
 }
 
 // This function is serialized by chrome.scripting, so it must be self-contained.
-function extractReadableContent() {
+const extractReadableContent = () => {
   const SKIP_TAGS = new Set([
     "SCRIPT", "STYLE", "NOSCRIPT", "NAV", "HEADER", "FOOTER", "ASIDE",
     "FORM", "SVG", "BUTTON", "TEMPLATE", "IFRAME", "DIALOG",
   ]);
 
-  function isHidden(el) {
+  const isHidden = (el) => {
     if (!(el instanceof Element)) return false;
     if (el.hasAttribute("aria-hidden")) return true;
     const style = window.getComputedStyle(el);
     return style.display === "none" || style.visibility === "hidden";
   }
 
-  function collectText(root) {
+  const collectText = (root) => {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
         let el = node.parentElement;
@@ -67,7 +64,7 @@ function extractReadableContent() {
     return parts.join("\n").replace(/\n{3,}/g, "\n\n").trim();
   }
 
-  function pickRoot() {
+  const pickRoot = () => {
     const direct = document.querySelector("article, main, [role='main']");
     if (direct) return direct;
 

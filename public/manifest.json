@@ -3,17 +3,18 @@
 	"name": "Saar AI",
 	"version": "1.0.0",
 	"description": "On-device reading assistant for web pages.",
+	"icons": {
+		"16": "icons/icon16.png",
+		"48": "icons/icon48.png",
+		"128": "icons/icon128.png"
+	},
 	"minimum_chrome_version": "138",
-	"permissions": [
-		"activeTab",
-		"scripting",
-		"storage",
-		"tabs",
-		"sidePanel"
-	],
 	"background": {
 		"service_worker": "background.js",
 		"type": "module"
+	},
+	"side_panel": {
+		"default_path": "index.html"
 	},
 	"action": {
 		"default_title": "Open Saar AI",
@@ -27,12 +28,11 @@
 		"http://*/*",
 		"https://*/*"
 	],
-	"side_panel": {
-		"default_path": "index.html"
-	},
-	"icons": {
-		"16": "icons/icon16.png",
-		"48": "icons/icon48.png",
-		"128": "icons/icon128.png"
-	}
+	"permissions": [
+		"activeTab",
+		"scripting",
+		"sidePanel",
+		"storage",
+		"tabs"
+	]
 }

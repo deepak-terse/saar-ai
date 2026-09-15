@@ -9,7 +9,7 @@ import { usePageContent } from "./hooks/usePageContent";
 import { supportsOnDeviceAI, getSummarizerAvailability } from "./services/ai";
 import "./styles.css";
 
-export default function App() {
+export default App = () => {
     const [activeTab, setActiveTab] = useState("read");
     const [status, setStatus] = useState("error");
     const [banner, setBanner] = useState(null);
@@ -33,7 +33,7 @@ export default function App() {
     useEffect(() => {
         let cancelled = false;
 
-        async function checkAvailability() {
+        const checkAvailability = async () => {
             if (!supportsOnDeviceAI()) {
                 setStatus("error");
                 setAiReady(false);
@@ -80,9 +80,7 @@ export default function App() {
         <>
             <Header status={status} />
             <Banner banner={banner} />
-
             <Tabs activeTab={activeTab} onChange={setActiveTab} />
-
             <main className="views">
                 <ReadView
                     active={readTabActive}
@@ -94,9 +92,7 @@ export default function App() {
                     controlsEnabled={controlsEnabled}
                     setControlsEnabled={setControlsEnabled}
                 />
-
                 <AskView active={askTabActive} page={page} setBanner={setBanner} />
-
                 <QuizView active={quizTabActive} page={page} setBanner={setBanner} />
             </main>
         </>

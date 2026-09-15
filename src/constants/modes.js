@@ -52,7 +52,7 @@ Leave a blank line between each question/answer pair.`,
     engine: "prompt",
     description: "Key technical or unfamiliar terms with simple, contextual definitions.",
     instruction: `Identify 4-8 technical or unfamiliar terms actually used on this page. For each, write one line as:
-Term: simple, contextual definition (one sentence).
+<term>: simple, contextual definition (one sentence).
 Only include terms that genuinely appear on the page and would likely be unfamiliar to a general reader.`,
   },
   "data-snapshot": {

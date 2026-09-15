@@ -1,43 +1,27 @@
 import { LOW_VARIANCE_OPTIONS } from "../constants/modes";
 
-export function supportsOnDeviceAI() {
-  return "Summarizer" in self && "LanguageModel" in self;
-}
-
-export async function getSummarizerAvailability() {
-  return Summarizer.availability();
-}
-
-function modelMonitor(showBanner) {
-  return (monitor) => {
-    monitor.addEventListener("downloadprogress", (event) => {
-      showBanner(
-        `Downloading the on-device model — one-time setup (${Math.round(event.loaded * 100)}%).`
-      );
-    });
-  };
-}
-
-export async function createSummarizer(mode, showBanner) {
-  return Summarizer.create({
-    type: mode.type,
-    format: "plain-text",
-    length: mode.length,
-    sharedContext:
-      "Summarizing an article extracted from a web page for someone skimming while reading.",
-    monitor: modelMonitor(showBanner),
+const modelMonitor = (showBanner) => (monitor) => {
+  monitor.addEventListener("downloadprogress", (event) => {
+    showBanner(`Downloading the on-device model — one-time setup (${Math.round(event.loaded * 100)}%).`);
   });
-}
+};
 
-export async function getLanguageModelAvailability() {
-  return LanguageModel.availability(LOW_VARIANCE_OPTIONS);
-}
+export const supportsOnDeviceAI = () => "Summarizer" in self && "LanguageModel" in self;
 
-export async function createLanguageModel(options = {}) {
-  return LanguageModel.create({
-    ...LOW_VARIANCE_OPTIONS,
-    ...options,
-  });
-}
+export const getSummarizerAvailability = async () => Summarizer.availability();
 
-export { modelMonitor };
+export const createSummarizer = async (mode, showBanner) => Summarizer.create({
+  type: mode.type,
+  format: "plain-text",
+  length: mode.length,
+  sharedContext:
+    "Summarizing an article extracted from a web page for someone skimming while reading.",
+  monitor: modelMonitor(showBanner),
+});
+
+export const getLanguageModelAvailability = async () => LanguageModel.availability(LOW_VARIANCE_OPTIONS);
+
+export const createLanguageModel = async (options = {}) => LanguageModel.create({
+  ...LOW_VARIANCE_OPTIONS,
+  ...options,
+});

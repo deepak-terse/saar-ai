@@ -1,6 +1,6 @@
 import { QUIZ_DIFFICULTY_INSTRUCTIONS } from "../constants/modes";
 
-export function createInitialQuiz(previousDifficulty = "medium") {
+export const createInitialQuiz = (previousDifficulty = "medium") => {
   return {
     difficulty: previousDifficulty,
     status: "setup",
@@ -19,7 +19,7 @@ export function createInitialQuiz(previousDifficulty = "medium") {
   };
 }
 
-export function chunkPageIntoParts(text, count) {
+export const chunkPageIntoParts = (text, count) => {
   const clean = text.trim();
   if (!clean) return [];
 
@@ -50,7 +50,7 @@ export function chunkPageIntoParts(text, count) {
   return parts.filter(Boolean);
 }
 
-export function buildQuizSchema(partCount) {
+export const buildQuizSchema = (partCount) => {
   return {
     type: "object",
     properties: {
@@ -94,18 +94,17 @@ export function buildQuizSchema(partCount) {
   };
 }
 
-export function buildQuizPrompt(quiz) {
+export const buildQuizPrompt = (quiz) => {
   const partsBlock = quiz.parts
     .map((text, index) => {
       const coverage = quiz.coverage[index];
       let note = "Not yet covered.";
 
       if (coverage?.askedTopics.length) {
-        note = `Already asked about: ${coverage.askedTopics.join("; ")}. ${
-          coverage.lastCorrect
-            ? "Answered correctly last time — ask about a DIFFERENT detail from this part now, not the same topic again."
-            : "Answered incorrectly last time — you may revisit the same concept, phrased more clearly, to help it stick."
-        }`;
+        note = `Already asked about: ${coverage.askedTopics.join("; ")}. ${coverage.lastCorrect
+          ? "Answered correctly last time — ask about a DIFFERENT detail from this part now, not the same topic again."
+          : "Answered incorrectly last time — you may revisit the same concept, phrased more clearly, to help it stick."
+          }`;
       }
 
       return `Part ${index + 1} (${note}):\n"""\n${text}\n"""`;
@@ -128,7 +127,7 @@ Rules for every question:
 ${partsBlock}`;
 }
 
-export function validateQuizBatch(raw, partCount) {
+export const validateQuizBatch = (raw, partCount) => {
   let parsed;
   try {
     parsed = JSON.parse(raw);
@@ -153,9 +152,9 @@ export function validateQuizBatch(raw, partCount) {
 
     const correctIndexes = Array.isArray(question.correctIndexes)
       ? [...new Set(question.correctIndexes)].filter(
-          (index) =>
-            Number.isInteger(index) && index >= 0 && index < options.length
-        )
+        (index) =>
+          Number.isInteger(index) && index >= 0 && index < options.length
+      )
       : [];
 
     if (!correctIndexes.length) continue;
@@ -166,8 +165,8 @@ export function validateQuizBatch(raw, partCount) {
 
     const partIndex =
       Number.isInteger(question.partIndex) &&
-      question.partIndex >= 0 &&
-      question.partIndex < partCount
+        question.partIndex >= 0 &&
+        question.partIndex < partCount
         ? question.partIndex
         : valid.length % partCount;
 
@@ -187,7 +186,7 @@ export function validateQuizBatch(raw, partCount) {
   return valid;
 }
 
-export function areSameIndexes(a, b) {
+export const areSameIndexes = (a, b) => {
   const left = [...a].sort((x, y) => x - y);
   const right = [...b].sort((x, y) => x - y);
   return left.length === right.length && left.every((value, index) => value === right[index]);
