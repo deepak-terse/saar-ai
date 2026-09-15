@@ -9,7 +9,7 @@ import { usePageContent } from "./hooks/usePageContent";
 import { supportsOnDeviceAI, getSummarizerAvailability } from "./services/ai";
 import "./styles.css";
 
-export default App = () => {
+const App = () => {
 	const [activeTab, setActiveTab] = useState("read");
 	const [status, setStatus] = useState("error");
 	const [banner, setBanner] = useState(null);
@@ -98,3 +98,5 @@ export default App = () => {
 		</>
 	);
 }
+
+export default App;

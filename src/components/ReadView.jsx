@@ -7,8 +7,7 @@ import {
 	createLanguageModel,
 } from "../services/ai";
 import { getSessionValue, setSessionValue } from "../services/chrome";
-import { getPercentItems, parsePromptLines, renderLabeledText } from "../utils/rendering";
-import { friendlyError } from "../utils/rendering";
+import { friendlyError, getPercentItems, parsePromptLines, renderLabeledText } from "../utils/rendering";
 
 const keyFor = (page, mode) => `readassist:${page.url}:${mode}`;
 
