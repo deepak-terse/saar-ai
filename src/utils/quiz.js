@@ -1,4 +1,5 @@
-import { QUIZ_DIFFICULTY_INSTRUCTIONS } from "../constants/modes";
+import { QUIZ_DIFFICULTY_INSTRUCTIONS, CONTENT_CATEGORIES } from "../constants/modes";
+import { COMMON_SYSTEM_INSTRUCTIONS } from "../constants/systemPrompt";
 
 export const createInitialQuiz = (previousDifficulty = "medium") => {
   return {
@@ -94,7 +95,7 @@ export const buildQuizSchema = (partCount) => {
   };
 }
 
-export const buildQuizPrompt = (quiz) => {
+export const buildQuizPrompt = (quiz, category) => {
   const partsBlock = quiz.parts
     .map((text, index) => {
       const coverage = quiz.coverage[index];
@@ -111,7 +112,14 @@ export const buildQuizPrompt = (quiz) => {
     })
     .join("\n\n");
 
-  return `You are writing a reading-comprehension quiz based on a web page's content, split into ${quiz.parts.length} parts below.
+  const categoryLine = category && CONTENT_CATEGORIES[category]
+    ? `\nContent type: This is ${CONTENT_CATEGORIES[category].types}. Frame questions appropriately for this content type.\n`
+    : "";
+
+  return `${COMMON_SYSTEM_INSTRUCTIONS}
+
+You are writing a reading-comprehension quiz based on a web page's content, split into ${quiz.parts.length} parts below.
+${categoryLine}
 
 Write exactly ${quiz.parts.length} questions, one per part, in the same order as the parts (partIndex 0 for Part 1, 1 for Part 2, and so on). Each question must be answerable using only its own part.
 

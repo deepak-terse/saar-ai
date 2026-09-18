@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { extractActiveTabContent } from "../services/chrome";
+import { classifyPageCategory } from "../services/classify";
 
 export const usePageContent = ({ onBeforeRefresh } = {}) => {
   const [page, setPage] = useState(null);
   const [banner, setBanner] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [category, setCategory] = useState(null);
+  const [classifying, setClassifying] = useState(false);
 
   const refresh = useCallback(async () => {
     onBeforeRefresh?.();
     setLoading(true);
+    setCategory(null);
+    setClassifying(false);
 
     const result = await extractActiveTabContent();
 
@@ -31,6 +36,24 @@ export const usePageContent = ({ onBeforeRefresh } = {}) => {
     return result;
   }, [onBeforeRefresh]);
 
+  // Run classification whenever a new page is extracted.
+  useEffect(() => {
+    if (!page) return;
+
+    let cancelled = false;
+    setClassifying(true);
+    setCategory(null);
+
+    classifyPageCategory(page).then((result) => {
+      if (!cancelled) {
+        setCategory(result);
+        setClassifying(false);
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [page]);
+
   useEffect(() => {
     refresh();
 
@@ -48,5 +71,5 @@ export const usePageContent = ({ onBeforeRefresh } = {}) => {
     };
   }, [refresh]);
 
-  return { page, banner, setBanner, loading, refresh };
+  return { page, banner, setBanner, loading, refresh, category, classifying };
 }
