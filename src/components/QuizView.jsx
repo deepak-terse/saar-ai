@@ -13,7 +13,7 @@ import { friendlyError } from "../utils/rendering";
 
 const capitalize = (value) => value.charAt(0).toUpperCase() + value.slice(1);
 
-export const QuizView = ({ active, page, setBanner }) => {
+export const QuizView = ({ active, page, setBanner, category }) => {
 	const [quiz, setQuiz] = useState(() => createInitialQuiz());
 	const [loading, setLoading] = useState(false);
 
@@ -81,7 +81,7 @@ export const QuizView = ({ active, page, setBanner }) => {
 
 			setBanner(null);
 
-			const raw = await session.prompt(buildQuizPrompt(loadingQuiz), {
+			const raw = await session.prompt(buildQuizPrompt(loadingQuiz, category), {
 				responseConstraint: buildQuizSchema(loadingQuiz.parts.length),
 				omitResponseConstraintInput: true,
 			});

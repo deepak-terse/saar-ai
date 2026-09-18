@@ -319,6 +319,18 @@ textarea {
   white-space: pre-wrap;
 }
 
+.mode-label {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rule);
+}
+
 .output ul {
   padding-left: 1.2em;
   margin: 0.4em 0;
@@ -332,6 +344,131 @@ textarea {
   font-family: var(--font-sans);
   font-weight: 700;
   color: var(--ink);
+}
+
+/* Markdown output */
+.markdown-output {
+  white-space: normal;
+}
+
+.markdown-output h2 {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 16px 0 8px;
+  letter-spacing: 0.01em;
+}
+
+.markdown-output h3 {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin: 12px 0 6px;
+}
+
+.markdown-output ul,
+.markdown-output ol {
+  padding-left: 1.2em;
+  margin: 0.4em 0;
+}
+
+.markdown-output li {
+  margin-bottom: 4px;
+}
+
+.markdown-output p {
+  margin: 0 0 10px;
+}
+
+.markdown-output table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  margin: 10px 0;
+}
+
+.markdown-output th,
+.markdown-output td {
+  border: 1px solid var(--rule);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.markdown-output th {
+  background: var(--paper-raised);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.markdown-output td {
+  color: var(--ink-soft);
+}
+
+.markdown-output hr {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 14px 0;
+}
+
+.markdown-output code {
+  font-family: "SF Mono", "Fira Code", Menlo, monospace;
+  font-size: 12px;
+  background: var(--paper-raised);
+  padding: 2px 5px;
+  border-radius: var(--radius);
+}
+
+.markdown-output pre {
+  background: var(--paper-raised);
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.markdown-output pre code {
+  padding: 0;
+  background: none;
+}
+
+/* Mermaid */
+.mermaid-container {
+  margin: 12px 0;
+  overflow-x: auto;
+}
+
+.mermaid-container svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-error {
+  font-family: "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  color: var(--error);
+  background: var(--error-soft);
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  margin: 8px 0;
+}
+
+.mermaid-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  background: var(--bg-subtle, #f5f2eb);
+  border-radius: var(--radius);
+}
+
+.mermaid-loading-text {
+  font-size: 12px;
+  color: var(--text-muted, #6b6459);
+  font-style: italic;
 }
 
 .empty-state,

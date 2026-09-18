@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { createLanguageModel, getLanguageModelAvailability } from "../services/ai";
+import { CONTENT_CATEGORIES } from "../constants/modes";
+import { COMMON_SYSTEM_INSTRUCTIONS } from "../constants/systemPrompt";
 import { friendlyError } from "../utils/rendering";
 
 const INITIAL_MESSAGE = "Ask a question about this page.";
 
-export const AskView = ({ active, page, setBanner }) => {
+export const AskView = ({ active, page, setBanner, category }) => {
 	const [messages, setMessages] = useState([]);
 	const [input, setInput] = useState("");
 	const [streaming, setStreaming] = useState(false);
@@ -39,7 +41,7 @@ export const AskView = ({ active, page, setBanner }) => {
 					{
 						role: "system",
 						content:
-							`You are a reading assistant. Answer questions using only the page content provided below. If the answer isn't in the page, say so plainly instead of guessing.\n\nTitle: ${page.title}\nURL: ${page.url}\n\n${page.text}`,
+							`${COMMON_SYSTEM_INSTRUCTIONS}\n\nAnswer questions using only the page content provided below. If the answer isn't in the page, say so plainly instead of guessing.${category && CONTENT_CATEGORIES[category] ? `\n\nThis content has been classified as: ${CONTENT_CATEGORIES[category].types}. Tailor your responses to this content type.` : ""}\n\nTitle: ${page.title}\nURL: ${page.url}\n\n${page.text}`,
 					},
 				],
 				monitor: (monitor) => {

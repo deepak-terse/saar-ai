@@ -7,6 +7,7 @@ import { AskView } from "./components/AskView";
 import { QuizView } from "./components/QuizView";
 import { usePageContent } from "./hooks/usePageContent";
 import { supportsOnDeviceAI, getSummarizerAvailability } from "./services/ai";
+import { CONTENT_CATEGORIES } from "./constants/modes";
 import "./styles.css";
 
 const App = () => {
@@ -21,7 +22,7 @@ const App = () => {
 		setControlsEnabled(false);
 	}, []);
 
-	const { page, banner: pageBanner } = usePageContent({
+	const { page, banner: pageBanner, category, classifying } = usePageContent({
 		onBeforeRefresh: beforeRefresh,
 	});
 
@@ -29,6 +30,17 @@ const App = () => {
 		if (pageBanner) setBanner(pageBanner);
 		else if (page) setBanner(null);
 	}, [pageBanner, page]);
+
+	// Show a classifying banner while category detection is in progress.
+	useEffect(() => {
+		if (classifying && page) {
+			setBanner({ kind: "info", text: "Classifying content…" });
+		} else if (!classifying && page && category) {
+			setBanner((current) =>
+				current?.text === "Classifying content…" ? null : current
+			);
+		}
+	}, [classifying, page, category]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -72,6 +84,13 @@ const App = () => {
 		return () => { cancelled = true; };
 	}, [page]);
 
+	// Controls are enabled only when page is loaded, AI is ready, AND classification is complete.
+	useEffect(() => {
+		setControlsEnabled(Boolean(page && aiReady && category && !classifying));
+	}, [page, aiReady, category, classifying]);
+
+	const categoryLabel = category ? CONTENT_CATEGORIES[category]?.label : null;
+
 	const readTabActive = activeTab === "read";
 	const askTabActive = activeTab === "ask";
 	const quizTabActive = activeTab === "quiz";
@@ -91,9 +110,10 @@ const App = () => {
 					setBanner={setBanner}
 					controlsEnabled={controlsEnabled}
 					setControlsEnabled={setControlsEnabled}
+					category={category}
 				/>
-				<AskView active={askTabActive} page={page} setBanner={setBanner} />
-				<QuizView active={quizTabActive} page={page} setBanner={setBanner} />
+				<AskView active={askTabActive} page={page} setBanner={setBanner} category={category} />
+				<QuizView active={quizTabActive} page={page} setBanner={setBanner} category={category} />
 			</main>
 		</>
 	);
