@@ -57,11 +57,152 @@ textarea {
 /* Header */
 .app-header {
   display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+  flex-shrink: 0;
+}
+
+.app-header-top {
+  display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--rule);
-  flex-shrink: 0;
+  padding: 9px 16px;
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-header-subheader {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 4px 16px 5px;
+  background: var(--paper-raised);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  font-size: 12px;
+  color: var(--ink-soft);
+  transition: background 250ms ease, color 250ms ease, border-color 250ms ease;
+}
+
+/* High-impact static value reward banner */
+.app-header-subheader.is-reward {
+  background: #fbf1e4;
+  border-top: 1px solid #ebd3ba;
+  color: #874614;
+}
+
+.subheader-reward-banner {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  animation: rewardFadeIn 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  width: 100%;
+}
+
+.subheader-reward-banner strong {
+  font-weight: 700;
+  color: #6e360e;
+}
+
+.reward-icon {
+  font-size: 14px;
+  display: inline-block;
+  animation: rewardPop 380ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes rewardPop {
+  0% { transform: scale(0.6) rotate(-10deg); }
+  70% { transform: scale(1.2) rotate(5deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+@keyframes rewardFadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Subheader page metadata */
+.subheader-page-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.meta-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.meta-item {
+  line-height: 1;
+}
+
+.meta-bullet {
+  color: var(--rule);
+  margin: 0 1px;
+}
+
+/* Subheader Ask mode context bar */
+.subheader-context-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.subheader-context-bar-wrapper .context-bar {
+  flex: 1;
+  height: 5px;
+  background: var(--rule);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.subheader-context-bar-wrapper .context-bar-fill {
+  height: 100%;
+  background: var(--lamp);
+  border-radius: 3px;
+  transition: width 300ms ease, background 300ms ease;
+}
+
+.subheader-context-bar-wrapper .context-bar-fill.is-warning {
+  background: var(--error);
+}
+
+.subheader-context-bar-wrapper .context-meta {
+  font-size: 11px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Subheader Quiz mode mastery tracker */
+.subheader-quiz-mastery {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.mastery-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.mastery-text strong {
+  font-weight: 700;
+  color: var(--highlight);
 }
 
 .brand {
@@ -739,6 +880,173 @@ textarea {
 .quiz-result .btn {
   margin-top: 4px;
   margin-right: 8px;
+}
+
+/* Context info — header badge */
+.context-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 2px 8px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* Context info — usage bar in tab views */
+.context-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.context-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--paper-raised);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.context-bar-fill {
+  height: 100%;
+  background: var(--lamp);
+  border-radius: 2px;
+  transition: width 300ms ease, background 300ms ease;
+}
+
+.context-bar-fill.is-warning {
+  background: var(--error);
+}
+
+.context-meta {
+  margin: 0;
+  font-size: 11px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Visited mode indicator */
+.mode-btn.is-visited::after {
+  content: " •";
+  color: var(--highlight);
+  font-weight: 700;
+}
+
+/* Read view empty container for centering Lifetime Dashboard */
+.read-empty-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  padding: 16px 8px;
+}
+
+/* Lifetime Efficiency Dashboard */
+.lifetime-dashboard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 380px;
+  background: #edeae2;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 22px 16px 18px;
+  text-align: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+  animation: dashboardFadeIn 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lifetime-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  background: rgba(0, 0, 0, 0.04);
+  padding: 3px 8px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+
+.lifetime-metrics-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.lifetime-metric-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lifetime-icon {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.lifetime-text-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.lifetime-number {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.lifetime-unit {
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.lifetime-divider {
+  font-size: 18px;
+  color: #cbc3b1;
+  font-weight: 300;
+  user-select: none;
+  margin: 0 4px;
+}
+
+.lifetime-prompt {
+  margin: 16px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+
+@keyframes dashboardFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 [hidden] {

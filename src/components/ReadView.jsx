@@ -1,244 +1,328 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MODES, CONTENT_CATEGORIES } from "../constants/modes";
-import {
-    createSummarizer,
-    getSummarizerAvailability,
-    getLanguageModelAvailability,
-    createLanguageModel,
-} from "../services/ai";
+import { createSummarizer, getSummarizerAvailability, getLanguageModelAvailability, createLanguageModel, } from "../services/ai";
 import { COMMON_SYSTEM_INSTRUCTIONS, buildPromptContext } from "../constants/systemPrompt";
-import { getSessionValue, setSessionValue } from "../services/chrome";
+import { useStorage } from "../hooks/useStorage";
+import { normalizeUrl } from "../utils/url";
+import { ensurePageVisit, recordReadingSeconds, calculateSavings } from "../services/metrics";
 import { friendlyError } from "../utils/rendering";
 import { MarkdownOutput } from "./MarkdownOutput";
-
-const keyFor = (page, mode) => `readassist:${page.url}:${mode}`;
+import { LifetimeEfficiencyDashboard } from "./LifetimeEfficiencyDashboard";
 
 const Output = ({ label, text }) => (
-    <div className="output" aria-live="polite">
-        {label && <h2 className="mode-label">{label}</h2>}
-        <MarkdownOutput text={text} />
-    </div>
+	<div className="output" aria-live="polite">
+		{label && <h2 className="mode-label">{label}</h2>}
+		<MarkdownOutput text={text} />
+	</div>
 );
 
 const Skeleton = () => (
-    <div aria-hidden="true">
-        <div className="skeleton-line" />
-        <div className="skeleton-line" />
-        <div className="skeleton-line" />
-    </div>
+	<div aria-hidden="true">
+		<div className="skeleton-line" />
+		<div className="skeleton-line" />
+		<div className="skeleton-line" />
+	</div>
 );
 
-export const ReadView = ({ active, page, aiReady, status, setStatus, setBanner, controlsEnabled, setControlsEnabled, category }) => {
-    const [activeMode, setActiveMode] = useState("highlights");
-    const [outputs, setOutputs] = useState({});
-    const [streaming, setStreaming] = useState(false);
-    const [regenerate, setRegenerate] = useState(false);
-    const [output, setOutput] = useState("");
-    const [outputMode, setOutputMode] = useState(null);
-    const [error, setError] = useState("");
+export const ReadView = ({
+	active,
+	page,
+	status,
+	setStatus,
+	setBanner,
+	controlsEnabled,
+	category,
+	contextUsage,
+	remaining,
+	usagePercent,
+	refreshUsage,
+	onSummaryStateChange,
+}) => {
+	const normalizedUrl = page?.url ? normalizeUrl(page.url) : null;
+	const sessionKey = normalizedUrl ? `read:${normalizedUrl}` : null;
 
-    const mode = MODES[activeMode];
+	// Storage hooks
+	const [sessionRead, setSessionRead] = useStorage(sessionKey, { summaries: {} });
+	const [pageRecord] = useStorage(normalizedUrl, null);
+	const [siteVisited] = useStorage("siteVisited", 0);
+	const [secondsSaved] = useStorage("secondsSaved", 0);
 
-    useEffect(() => {
-        let cancelled = false;
+	// Local component state
+	const [activeMode, setActiveMode] = useState(null);
+	const [streaming, setStreaming] = useState(false);
+	const [streamingText, setStreamingText] = useState("");
+	const [error, setError] = useState("");
 
-        const loadCache = async () => {
-            if (!page) return;
-            const value = await getSessionValue(keyFor(page, activeMode));
-            if (cancelled) return;
+	const modeStartTimeRef = useRef(Date.now());
+	const activeModeRef = useRef(activeMode);
+	activeModeRef.current = activeMode;
 
-            setOutputs((current) => ({ ...current, [activeMode]: value }));
-            if (value) {
-                setOutput(value);
-                setOutputMode(mode);
-                setRegenerate(true);
-            } else {
-                setOutput("");
-                setOutputMode(null);
-                setRegenerate(false);
-            }
-        }
+	const mode = activeMode ? MODES[activeMode] : null;
+	const currentSummary = activeMode ? sessionRead?.summaries?.[activeMode] : null;
+	const displayOutput = streaming ? streamingText : currentSummary;
 
-        loadCache();
-        return () => { cancelled = true; };
-    }, [page, activeMode, mode]);
+	const lifetimeMetrics = {
+		siteVisited,
+		secondsSaved,
+		hoursSaved: Math.round((secondsSaved / 3600) * 10) / 10,
+		articlesCondensed: siteVisited,
+	};
 
+	// Ensure page visit is recorded in IndexedDB and siteVisited incremented if new
+	useEffect(() => {
+		if (!page?.url) return;
+		const rawWords = page.wordCount;
+		const words =
+			typeof rawWords === "number"
+				? rawWords
+				: Array.isArray(rawWords)
+					? rawWords.length
+					: page.text
+						? page.text.trim().split(/\s+/).filter(Boolean).length
+						: 0;
+		ensurePageVisit(page.url, { words, category: category || 1 });
+	}, [page?.url, page?.wordCount, category]);
 
+	// Reset local view state when page changes
+	useEffect(() => {
+		setActiveMode(null);
+		setStreaming(false);
+		setStreamingText("");
+		setError("");
+		onSummaryStateChange?.({ hasSummary: false, minutesSaved: 0 });
+	}, [normalizedUrl, onSummaryStateChange]);
 
-    const showMeta = page
-        ? `${page.wordCount.toLocaleString()} words · about ${Math.max(
-            1,
-            Math.round(page.wordCount / 200)
-        )} min read${page.truncated ? " · summarized from the first part of this page" : ""}`
-        : "";
+	// Commit reading time when leaving or changing mode
+	const commitReadingTime = async () => {
+		if (!normalizedUrl || !activeModeRef.current) return;
+		const spentSec = Math.round((Date.now() - modeStartTimeRef.current) / 1000);
+		if (spentSec >= 2) {
+			await recordReadingSeconds(normalizedUrl, spentSec);
+		}
+	};
 
-    const generate = async (modeKey) => {
-        if (!page || streaming || !controlsEnabled) return;
+	// Reading time tracking & subheader savings updater
+	useEffect(() => {
+		if (!page || !activeMode || (!currentSummary && !streaming)) return;
 
-        const selectedMode = MODES[modeKey];
-        setStreaming(true);
-        setStatus("busy");
-        setError("");
-        setOutput("");
-        setOutputMode(null);
-        setRegenerate(true);
+		modeStartTimeRef.current = Date.now();
+		const rawWords = page.wordCount;
+		const pageWords =
+			typeof rawWords === "number"
+				? rawWords
+				: Array.isArray(rawWords)
+					? rawWords.length
+					: page.text
+						? page.text.trim().split(/\s+/).filter(Boolean).length
+						: 0;
 
-        try {
-            let full = "";
+		const updateSavings = () => {
+			const spentSoFar = Math.round((Date.now() - modeStartTimeRef.current) / 1000);
+			const totalRead = (pageRecord?.readingMetadata?.secondsRead || 0) + spentSoFar;
+			const { minutesSaved } = calculateSavings(pageWords, totalRead);
+			onSummaryStateChange?.({ hasSummary: true, minutesSaved });
+		};
 
-            if (selectedMode.engine === "summarizer") {
-                const availability = await getSummarizerAvailability();
-                if (availability === "unavailable") {
-                    throw new Error("On-device AI isn't available for this mode on this device.");
-                }
+		updateSavings();
+		const timer = setInterval(updateSavings, 1000);
 
-                const summarizer = await createSummarizer(selectedMode, setBanner);
-                setBanner(null);
+		return () => {
+			clearInterval(timer);
+			commitReadingTime();
+		};
+	}, [page, activeMode, currentSummary, streaming, pageRecord?.readingMetadata?.secondsRead]);
 
-                const stream = summarizer.summarizeStreaming(page.text, {
-                    context: `
-                    Page title: ${page.title}
-                    ${category && CONTENT_CATEGORIES[category] ? `Content type: ${CONTENT_CATEGORIES[category].types}\n` : ""}
-                    Instructions: ${selectedMode.instruction}`,
-                });
+	// Handle window unload
+	useEffect(() => {
+		const onUnload = () => commitReadingTime();
+		window.addEventListener("beforeunload", onUnload);
+		return () => window.removeEventListener("beforeunload", onUnload);
+	}, []);
 
-                for await (const chunk of stream) {
-                    full += chunk;
-                    setOutput((current) => current + chunk);
-                }
+	const generate = async (modeKey) => {
+		if (!page || streaming || !controlsEnabled) return;
 
-                setOutputs((current) => ({ ...current, [modeKey]: full }));
-                await setSessionValue(keyFor(page, modeKey), full);
-                setOutputMode(selectedMode);
-                summarizer?.destroy?.();
-            } else {
-                const availability = await getLanguageModelAvailability();
-                if (availability === "unavailable") {
-                    throw new Error("On-device AI isn't available for this mode on this device.");
-                }
+		const selectedMode = MODES[modeKey];
+		setStreaming(true);
+		setStreamingText("");
+		setStatus("busy");
+		setError("");
 
-                let session;
-                try {
-                    session = await createLanguageModel({
-                        systemPrompt: COMMON_SYSTEM_INSTRUCTIONS,
-                        monitor: (monitor) => {
-                            monitor.addEventListener("downloadprogress", (event) => {
-                                setBanner(
-                                    `Downloading the on-device model — one-time setup (${Math.round(
-                                        event.loaded * 100
-                                    )}%).`
-                                );
-                            });
-                        },
-                    });
+		try {
+			let full = "";
 
-                    setBanner(null);
+			if (selectedMode.engine === "summarizer") {
+				const availability = await getSummarizerAvailability();
+				if (availability === "unavailable") {
+					throw new Error("On-device AI isn't available for this mode on this device.");
+				}
 
-                    const instruction = Array.isArray(selectedMode.instruction)
-                        ? selectedMode.instruction[category - 1] || selectedMode.instruction[0]
-                        : selectedMode.instruction;
+				const summarizer = await createSummarizer(selectedMode, setBanner);
+				setBanner(null);
 
-                    const contextBlock = buildPromptContext({ page, category });
-                    const prompt = `${instruction}\n\n${contextBlock}`;
+				const stream = summarizer.summarizeStreaming(page.text, {
+					context: `
+          Page title: ${page.title}
+          ${category && CONTENT_CATEGORIES[category] ? `Content type: ${CONTENT_CATEGORIES[category].types}\n` : ""}
+          Instructions: ${selectedMode.instruction}`,
+				});
 
-                    const stream = session.promptStreaming(prompt);
-                    for await (const chunk of stream) {
-                        full += chunk;
-                        setOutput((current) => current + chunk);
-                    }
+				for await (const chunk of stream) {
+					full += chunk;
+					setStreamingText(full);
+				}
 
-                    setOutput(full);
-                    setOutputMode(selectedMode);
-                    setOutputs((current) => ({ ...current, [modeKey]: full }));
-                    await setSessionValue(keyFor(page, modeKey), full);
-                } finally {
-                    session?.destroy?.();
-                }
-            }
-        } catch (err) {
-            setError(
-                err?.message?.startsWith("On-device AI isn't available")
-                    ? err.message
-                    : `Couldn't generate this. ${friendlyError(err)}`
-            );
-        } finally {
-            setStreaming(false);
-            setStatus("ready");
-        }
-    }
+				summarizer?.destroy?.();
+			} else {
+				const availability = await getLanguageModelAvailability();
+				if (availability === "unavailable") {
+					throw new Error("On-device AI isn't available for this mode on this device.");
+				}
 
-    const handleModeClick = async (key) => {
-        if (!page || streaming || !controlsEnabled) return;
-        const cached = await getSessionValue(keyFor(page, key));
-        setActiveMode(key);
+				let session;
+				try {
+					session = await createLanguageModel({
+						systemPrompt: COMMON_SYSTEM_INSTRUCTIONS,
+						monitor: (monitor) => {
+							monitor.addEventListener("downloadprogress", (event) => {
+								setBanner(
+									`Downloading the on-device model — one-time setup (${Math.round(
+										event.loaded * 100
+									)}%).`
+								);
+							});
+						},
+					});
 
-        if (!cached) await generate(key);
-    }
+					setBanner(null);
 
-    const handleRegenerate = async () => generate(activeMode);
+					const instruction = Array.isArray(selectedMode.instruction)
+						? selectedMode.instruction[category - 1] || selectedMode.instruction[0]
+						: selectedMode.instruction;
 
-    return (
-        <section
-            id="panel-read"
-            className={`view${active ? " is-active" : ""}`}
-            role="tabpanel"
-            aria-labelledby="tab-read"
-            hidden={!active}
-        >
-            <div className="mode-grid" role="group" aria-label="Summary mode">
-                {Object.entries(MODES).map(([key, item]) => (
-                    <button
-                        key={key}
-                        type="button"
-                        className={`mode-btn${key === activeMode ? " is-active" : ""}`}
-                        disabled={!controlsEnabled || streaming}
-                        aria-pressed={key === activeMode}
-                        aria-label={`${item.label}: ${item.description}`}
-                        title={item.description}
-                        onClick={() => handleModeClick(key)}
-                    >
-                        {item.label}
-                    </button>
-                ))}
-            </div>
+					const contextBlock = buildPromptContext({ page, category });
+					const prompt = `${instruction}\n\n${contextBlock}`;
 
-            <div className="output-toolbar">
-                <p className="meta" hidden={!page || !regenerate}>{page ? showMeta : ""}</p>
-                <button
-                    type="button"
-                    className="link-btn"
-                    hidden={!regenerate}
-                    disabled={streaming}
-                    onClick={handleRegenerate}
-                >
-                    Regenerate
-                </button>
-            </div>
+					const stream = session.promptStreaming(prompt);
+					for await (const chunk of stream) {
+						full += chunk;
+						setStreamingText(full);
+					}
+				} finally {
+					refreshUsage?.(session);
+					session?.destroy?.();
+				}
+			}
 
-            {streaming ? (
-                <div className="output" aria-live="polite">
-                    <h2 className="mode-label">{mode.label}</h2>
-                    {output ? (
-                        <MarkdownOutput text={output} />
-                    ) : (
-                        <Skeleton />
-                    )}
-                </div>
-            ) : error ? (
-                <div className="output">
-                    <p className="error-state">{error}</p>
-                </div>
-            ) : output && outputMode ? (
-                <Output label={mode.label} text={output} />
-            ) : (
-                <div className="output" aria-live="polite">
-                    <p className="empty-state">
-                        {page
-                            ? `Click "${mode.label}" to generate it for this page.`
-                            : "Open a page to summarize it."}
-                    </p>
-                </div>
-            )}
-        </section>
-    );
+			setSessionRead((prev) => ({
+				...prev,
+				summaries: {
+					...(prev?.summaries || {}),
+					[modeKey]: full,
+				},
+			}));
+		} catch (err) {
+			setError(
+				err?.message?.startsWith("On-device AI isn't available")
+					? err.message
+					: `Couldn't generate this. ${friendlyError(err)}`
+			);
+		} finally {
+			setStreaming(false);
+			setStatus("ready");
+		}
+	};
+
+	const handleModeClick = async (key) => {
+		if (!page || streaming || !controlsEnabled) return;
+		await commitReadingTime();
+		setActiveMode(key);
+		setError("");
+
+		const cached = sessionRead?.summaries?.[key];
+		if (!cached) {
+			generate(key);
+		}
+	};
+
+	const isSummaryActive = Boolean(activeMode && (displayOutput || streaming));
+
+	return (
+		<section
+			id="panel-read"
+			className={`view${active ? " is-active" : ""}${!isSummaryActive ? " view-initial" : ""}`}
+			role="tabpanel"
+			aria-labelledby="tab-read"
+			hidden={!active}
+		>
+			<div className="mode-grid" role="group" aria-label="Summary mode">
+				{Object.entries(MODES).map(([key, item]) => {
+					const isVisited = Boolean(sessionRead?.summaries?.[key]);
+					return (
+						<button
+							key={key}
+							type="button"
+							className={`mode-btn${key === activeMode ? " is-active" : ""}${isVisited ? " is-visited" : ""}`}
+							disabled={!controlsEnabled || streaming}
+							aria-pressed={key === activeMode}
+							aria-label={`${item.label}: ${item.description}`}
+							title={item.description}
+							onClick={() => handleModeClick(key)}
+						>
+							{item.label}
+						</button>
+					);
+				})}
+			</div>
+
+			{isSummaryActive && (
+				<div className="output-toolbar">
+					<p className="meta">{page?.truncated ? "Summarized from the first part of this page" : ""}</p>
+					<button
+						type="button"
+						className="link-btn"
+						disabled={streaming}
+						onClick={() => activeMode && generate(activeMode)}
+					>
+						Regenerate
+					</button>
+				</div>
+			)}
+
+			{mode?.engine === "prompt" && usagePercent > 0 && displayOutput && (
+				<div className="context-bar-wrapper">
+					<div className="context-bar">
+						<div
+							className={`context-bar-fill${usagePercent >= 85 ? " is-warning" : ""}`}
+							style={{ width: `${usagePercent}%` }}
+						/>
+					</div>
+					<span className="context-meta">
+						{contextUsage.toLocaleString()} used · {remaining != null ? remaining.toLocaleString() : "—"} left
+					</span>
+				</div>
+			)}
+
+			{!isSummaryActive ? (
+				<div className="read-empty-container">
+					<LifetimeEfficiencyDashboard metrics={lifetimeMetrics} />
+				</div>
+			) : streaming ? (
+				<div className="output" aria-live="polite">
+					<h2 className="mode-label">{mode?.label}</h2>
+					{streamingText ? <MarkdownOutput text={streamingText} /> : <Skeleton />}
+				</div>
+			) : error ? (
+				<div className="output">
+					<p className="error-state">{error}</p>
+				</div>
+			) : displayOutput ? (
+				<Output label={mode?.label} text={displayOutput} />
+			) : (
+				<div className="output" aria-live="polite">
+					<p className="empty-state">Click "{mode?.label || "a mode"}" to generate it for this page.</p>
+				</div>
+			)}
+		</section>
+	);
 }

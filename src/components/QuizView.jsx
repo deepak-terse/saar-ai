@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { QUIZ_PARTS, LOW_VARIANCE_OPTIONS } from "../constants/modes";
+import { QUIZ_PARTS } from "../constants/modes";
 import { createLanguageModel, getLanguageModelAvailability } from "../services/ai";
 import {
 	buildQuizPrompt,
@@ -7,51 +7,45 @@ import {
 	chunkPageIntoParts,
 	createInitialQuiz,
 	validateQuizBatch,
-	areSameIndexes
+	areSameIndexes,
 } from "../utils/quiz";
 import { friendlyError } from "../utils/rendering";
+import { useStorage } from "../hooks/useStorage";
+import { normalizeUrl } from "../utils/url";
 
 const capitalize = (value) => value.charAt(0).toUpperCase() + value.slice(1);
 
-export const QuizView = ({ active, page, setBanner, category }) => {
+export const QuizView = ({ active, page, setBanner, category, contextUsage, remaining, usagePercent, refreshUsage }) => {
+	const normalizedUrl = page?.url ? normalizeUrl(page.url) : null;
+	const sessionKey = normalizedUrl ? `quiz:${normalizedUrl}` : null;
+
+	const [sessionQuiz, setSessionQuiz] = useStorage(sessionKey, { results: [] });
 	const [quiz, setQuiz] = useState(() => createInitialQuiz());
 	const [loading, setLoading] = useState(false);
 
+	const results = sessionQuiz?.results || [];
+	const lastResult = results.length > 0 ? results[results.length - 1] : null;
+
 	const updateQuiz = (updater) => {
-		setQuiz((current) => {
-			const next = typeof updater === "function" ? updater(current) : updater;
-			return next;
-		});
-	}
+		setQuiz((current) => (typeof updater === "function" ? updater(current) : updater));
+	};
 
 	const startQuiz = async () => {
 		if (!page) return;
-
 		const parts = chunkPageIntoParts(page.text, QUIZ_PARTS);
 		const next = {
 			...createInitialQuiz(quiz.difficulty),
 			parts,
 			coverage: parts.map(() => ({ askedTopics: [], lastCorrect: null })),
 		};
-
 		setQuiz(next);
 		await generateBatch(next);
-	}
+	};
 
 	const generateBatch = async (currentQuiz = quiz) => {
 		const loadingQuiz = { ...currentQuiz, status: "loading", errorMessage: "" };
 		setQuiz(loadingQuiz);
 		setLoading(true);
-
-		if (!("LanguageModel" in self)) {
-			setQuiz({
-				...loadingQuiz,
-				status: "error",
-				errorMessage: "This Chrome version doesn't support on-device AI.",
-			});
-			setLoading(false);
-			return;
-		}
 
 		const availability = await getLanguageModelAvailability();
 		if (availability === "unavailable") {
@@ -65,15 +59,12 @@ export const QuizView = ({ active, page, setBanner, category }) => {
 		}
 
 		let session;
-
 		try {
 			session = await createLanguageModel({
 				monitor: (monitor) => {
 					monitor.addEventListener("downloadprogress", (event) => {
 						setBanner(
-							`Downloading the on-device model — one-time setup (${Math.round(
-								event.loaded * 100
-							)}%).`
+							`Downloading the on-device model — one-time setup (${Math.round(event.loaded * 100)}%).`
 						);
 					});
 				},
@@ -99,28 +90,27 @@ export const QuizView = ({ active, page, setBanner, category }) => {
 				status: "question",
 			});
 		} catch (err) {
-			console.error("Quiz generation failed:", err);
 			setQuiz({
 				...loadingQuiz,
 				status: "error",
 				errorMessage: `Couldn't generate quiz questions. ${friendlyError(err)}`,
 			});
 		} finally {
+			refreshUsage?.(session);
 			session?.destroy?.();
 			setLoading(false);
 		}
-	}
+	};
 
 	const recordCoverage = (current, question, correct) => {
 		const coverage = current.coverage.map((item) => ({ ...item, askedTopics: [...item.askedTopics] }));
 		const target = coverage[question.partIndex];
 		if (!target) return coverage;
-
 		target.askedTopics.push(question.question.slice(0, 80));
 		if (target.askedTopics.length > 2) target.askedTopics.shift();
 		target.lastCorrect = correct;
 		return coverage;
-	}
+	};
 
 	const submitAnswer = () => {
 		const question = quiz.batch?.[quiz.qIndex];
@@ -138,7 +128,7 @@ export const QuizView = ({ active, page, setBanner, category }) => {
 			},
 			coverage: recordCoverage(current, question, correct),
 		}));
-	}
+	};
 
 	const nextQuestion = () => {
 		if (quiz.qIndex + 1 < quiz.batch.length) {
@@ -151,6 +141,19 @@ export const QuizView = ({ active, page, setBanner, category }) => {
 			return;
 		}
 
+		// Round completed: save result to temporary session storage
+		const roundResult = {
+			mode: quiz.difficulty,
+			correct: quiz.batchScore.correct,
+			total: quiz.batchScore.total,
+			timestamp: new Date().toISOString(),
+		};
+
+		setSessionQuiz((prev) => ({
+			...prev,
+			results: [...(prev?.results || []), roundResult],
+		}));
+
 		updateQuiz((current) => ({
 			...current,
 			totalScore: {
@@ -160,16 +163,15 @@ export const QuizView = ({ active, page, setBanner, category }) => {
 			batchIndex: current.batchIndex + 1,
 			status: "batch-result",
 		}));
-	}
+	};
 
 	const finishQuiz = () => {
 		updateQuiz((current) => ({
 			...current,
-			lastResult: { ...current.totalScore },
 			status: "setup",
 			batch: null,
 		}));
-	}
+	};
 
 	const restartQuiz = () => updateQuiz((current) => createInitialQuiz(current.difficulty));
 
@@ -179,10 +181,10 @@ export const QuizView = ({ active, page, setBanner, category }) => {
 			selected: multiple
 				? checked
 					? [...current.selected, index]
-					: current.selected.filter((value) => value !== index)
+					: current.selected.filter((v) => v !== index)
 				: [index],
 		}));
-	}
+	};
 
 	if (!page) {
 		return (
@@ -205,12 +207,26 @@ export const QuizView = ({ active, page, setBanner, category }) => {
 				</div>
 			)}
 
+			{showMeta && usagePercent > 0 && (
+				<div className="context-bar-wrapper">
+					<div className="context-bar">
+						<div
+							className={`context-bar-fill${usagePercent >= 85 ? " is-warning" : ""}`}
+							style={{ width: `${usagePercent}%` }}
+						/>
+					</div>
+					<span className="context-meta">
+						{contextUsage.toLocaleString()} used · {remaining != null ? remaining.toLocaleString() : "—"} left
+					</span>
+				</div>
+			)}
+
 			{quiz.status === "setup" && (
 				<div className="quiz-setup">
-					{quiz.lastResult && (
+					{lastResult && (
 						<p className="meta">
-							Last attempt: {quiz.lastResult.correct}/{quiz.lastResult.total} correct (
-							{quiz.lastResult.total ? Math.round((quiz.lastResult.correct / quiz.lastResult.total) * 100) : 0}%).
+							Last attempt ({capitalize(lastResult.mode)}): {lastResult.correct}/{lastResult.total} correct (
+							{lastResult.total ? Math.round((lastResult.correct / lastResult.total) * 100) : 0}%).
 						</p>
 					)}
 
@@ -232,7 +248,7 @@ export const QuizView = ({ active, page, setBanner, category }) => {
 					</div>
 
 					<button type="button" className="btn btn-primary" onClick={startQuiz}>
-						{quiz.lastResult ? "Take another quiz" : "Start quiz"}
+						{lastResult ? "Take another quiz" : "Start quiz"}
 					</button>
 				</div>
 			)}
@@ -291,9 +307,7 @@ export const QuizView = ({ active, page, setBanner, category }) => {
 											value={index}
 											checked={selected}
 											disabled={quiz.answered}
-											onChange={(event) =>
-												selectOption(index, event.target.checked, multiple)
-											}
+											onChange={(event) => selectOption(index, event.target.checked, multiple)}
 										/>
 										<span>{optionText}</span>
 									</label>
@@ -316,9 +330,7 @@ export const QuizView = ({ active, page, setBanner, category }) => {
 									{quiz.lastAnswerCorrect ? "Correct." : "Not quite."}
 								</p>
 
-								{question.explanation && (
-									<p className="quiz-explanation">{question.explanation}</p>
-								)}
+								{question.explanation && <p className="quiz-explanation">{question.explanation}</p>}
 
 								<button type="button" className="btn btn-primary" onClick={nextQuestion}>
 									{quiz.qIndex + 1 < quiz.batch.length ? "Next question" : "See results"}
@@ -337,9 +349,7 @@ export const QuizView = ({ active, page, setBanner, category }) => {
 
 					<p className="meta">
 						{quiz.totalScore.correct} / {quiz.totalScore.total} correct overall (
-						{quiz.totalScore.total
-							? Math.round((quiz.totalScore.correct / quiz.totalScore.total) * 100)
-							: 0}%)
+						{quiz.totalScore.total ? Math.round((quiz.totalScore.correct / quiz.totalScore.total) * 100) : 0}%)
 					</p>
 
 					<button type="button" className="btn btn-primary" onClick={() => generateBatch(quiz)}>

@@ -6,8 +6,8 @@ import { ReadView } from "./components/ReadView";
 import { AskView } from "./components/AskView";
 import { QuizView } from "./components/QuizView";
 import { usePageContent } from "./hooks/usePageContent";
+import { useAIContext } from "./hooks/useAIContext";
 import { supportsOnDeviceAI, getSummarizerAvailability } from "./services/ai";
-import { CONTENT_CATEGORIES } from "./constants/modes";
 import "./styles.css";
 
 const App = () => {
@@ -16,6 +16,9 @@ const App = () => {
 	const [banner, setBanner] = useState(null);
 	const [aiReady, setAiReady] = useState(false);
 	const [controlsEnabled, setControlsEnabled] = useState(false);
+	const [summaryState, setSummaryState] = useState({ hasSummary: false, minutesSaved: 0 });
+
+	const { contextWindow, contextUsage, remaining, usagePercent, refreshUsage } = useAIContext();
 
 	const beforeRefresh = useCallback(() => {
 		setAiReady(false);
@@ -89,15 +92,23 @@ const App = () => {
 		setControlsEnabled(Boolean(page && aiReady && category && !classifying));
 	}, [page, aiReady, category, classifying]);
 
-	const categoryLabel = category ? CONTENT_CATEGORIES[category]?.label : null;
-
 	const readTabActive = activeTab === "read";
 	const askTabActive = activeTab === "ask";
 	const quizTabActive = activeTab === "quiz";
 
 	return (
 		<>
-			<Header status={status} />
+			<Header
+				status={status}
+				contextWindow={contextWindow}
+				page={page}
+				activeTab={activeTab}
+				hasSummary={summaryState.hasSummary}
+				minutesSaved={summaryState.minutesSaved}
+				contextUsage={contextUsage}
+				remaining={remaining}
+				usagePercent={usagePercent}
+			/>
 			<Banner banner={banner} />
 			<Tabs activeTab={activeTab} onChange={setActiveTab} />
 			<main className="views">
@@ -111,9 +122,14 @@ const App = () => {
 					controlsEnabled={controlsEnabled}
 					setControlsEnabled={setControlsEnabled}
 					category={category}
+					contextUsage={contextUsage}
+					remaining={remaining}
+					usagePercent={usagePercent}
+					refreshUsage={refreshUsage}
+					onSummaryStateChange={setSummaryState}
 				/>
-				<AskView active={askTabActive} page={page} setBanner={setBanner} category={category} />
-				<QuizView active={quizTabActive} page={page} setBanner={setBanner} category={category} />
+				<AskView active={askTabActive} page={page} setBanner={setBanner} category={category} contextUsage={contextUsage} remaining={remaining} usagePercent={usagePercent} refreshUsage={refreshUsage} />
+				<QuizView active={quizTabActive} page={page} setBanner={setBanner} category={category} contextUsage={contextUsage} remaining={remaining} usagePercent={usagePercent} refreshUsage={refreshUsage} />
 			</main>
 		</>
 	);
