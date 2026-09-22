@@ -14,7 +14,7 @@ const extractFromActiveTab = async () => {
 		let [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
 
 		if (!tab?.id) return { ok: false, error: "no-active-tab" };
-		if (!/^https?:\/\//.test(tab.url ?? "")) return { ok: false, error: "unsupported-page", tabId: tab.id, url: tab.url };
+		if (!/^https?:\/\//.test(tab.url ?? "")) return { ok: false, error: "unsupported", tabId: tab.id, url: tab.url };
 
 		const [{ result }] = await chrome.scripting.executeScript({
 			target: { tabId: tab.id },

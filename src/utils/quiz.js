@@ -198,4 +198,93 @@ export const areSameIndexes = (a, b) => {
   const left = [...a].sort((x, y) => x - y);
   const right = [...b].sort((x, y) => x - y);
   return left.length === right.length && left.every((value, index) => value === right[index]);
-}
+};
+
+export const getHoldOfTopicAdjective = (answered, correct) => {
+  if (!answered || answered <= 0) return "No attempts";
+  const percentage = Math.round((correct / answered) * 100);
+  if (percentage >= 90) return "Exceptional grasp";
+  if (percentage >= 75) return "Strong grasp";
+  if (percentage >= 60) return "Solid grasp";
+  if (percentage >= 45) return "Moderate grasp";
+  if (percentage >= 25) return "Basic grasp";
+  if (percentage > 0) return "Developing grasp";
+  return "Needs practice";
+};
+
+export const getHoldOfTopicClass = (adjective) => {
+  switch (adjective) {
+    case "Exceptional grasp":
+      return "is-exceptional";
+    case "Strong grasp":
+      return "is-strong";
+    case "Solid grasp":
+      return "is-solid";
+    case "Moderate grasp":
+      return "is-moderate";
+    case "Basic grasp":
+      return "is-basic";
+    case "Developing grasp":
+      return "is-developing";
+    case "Needs practice":
+      return "is-needs-practice";
+    case "No attempts":
+    default:
+      return "is-empty";
+  }
+};
+
+export const calculateQuizStats = (results = [], currentQuiz = null) => {
+  const breakdown = {
+    easy: { correct: 0, total: 0 },
+    medium: { correct: 0, total: 0 },
+    hard: { correct: 0, total: 0 },
+  };
+
+  if (Array.isArray(results)) {
+    for (const item of results) {
+      if (!item) continue;
+      const mode = String(item.mode || "medium").toLowerCase();
+      if (!breakdown[mode]) {
+        breakdown[mode] = { correct: 0, total: 0 };
+      }
+      breakdown[mode].correct += Number(item.correct) || 0;
+      breakdown[mode].total += Number(item.total) || 0;
+    }
+  }
+
+  // If a quiz batch is actively being taken in "question" status, include answered questions so far
+  if (currentQuiz && currentQuiz.status === "question" && Array.isArray(currentQuiz.batch)) {
+    const mode = String(currentQuiz.difficulty || "medium").toLowerCase();
+    if (!breakdown[mode]) {
+      breakdown[mode] = { correct: 0, total: 0 };
+    }
+    const currentAnswered = (Number(currentQuiz.qIndex) || 0) + (currentQuiz.answered ? 1 : 0);
+    const currentCorrect = Number(currentQuiz.batchScore?.correct) || 0;
+
+    breakdown[mode].correct += currentCorrect;
+    breakdown[mode].total += currentAnswered;
+  }
+
+  const totalCorrect =
+    (breakdown.easy?.correct || 0) +
+    (breakdown.medium?.correct || 0) +
+    (breakdown.hard?.correct || 0);
+  const totalAnswered =
+    (breakdown.easy?.total || 0) +
+    (breakdown.medium?.total || 0) +
+    (breakdown.hard?.total || 0);
+  const percentage =
+    totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+  const adjective = getHoldOfTopicAdjective(totalAnswered, totalCorrect);
+  const adjectiveClass = getHoldOfTopicClass(adjective);
+
+  return {
+    totalAnswered,
+    totalCorrect,
+    percentage,
+    adjective,
+    adjectiveClass,
+    breakdown,
+  };
+};

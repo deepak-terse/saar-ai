@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getStorageItem, setStorageItem, subscribeStorage } from "../services/storage";
+import { getStorageItem, getStorageItemSync, setStorageItem, subscribeStorage } from "../services/storage";
 
 export const useStorage = (key, initialValue) => {
-	const [value, setValue] = useState(initialValue);
-	const [loading, setLoading] = useState(Boolean(key));
+	const [value, setValue] = useState(() => {
+		if (!key) return initialValue;
+		const syncVal = getStorageItemSync(key);
+		return syncVal !== undefined && syncVal !== null ? syncVal : initialValue;
+	});
+	const [loading, setLoading] = useState(() => Boolean(key && getStorageItemSync(key) === undefined));
 	const valueRef = useRef(value);
 	valueRef.current = value;
 
@@ -15,7 +19,14 @@ export const useStorage = (key, initialValue) => {
 		}
 
 		let cancelled = false;
-		setLoading(true);
+		const syncVal = getStorageItemSync(key);
+		if (syncVal !== undefined && syncVal !== null) {
+			setValue(syncVal);
+			setLoading(false);
+		} else {
+			setValue(initialValue);
+			setLoading(true);
+		}
 
 		getStorageItem(key).then((stored) => {
 			if (!cancelled) {

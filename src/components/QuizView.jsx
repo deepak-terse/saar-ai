@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { QUIZ_PARTS } from "../constants/modes";
 import { createLanguageModel, getLanguageModelAvailability } from "../services/ai";
 import {
@@ -8,6 +8,7 @@ import {
 	createInitialQuiz,
 	validateQuizBatch,
 	areSameIndexes,
+	calculateQuizStats,
 } from "../utils/quiz";
 import { friendlyError } from "../utils/rendering";
 import { useStorage } from "../hooks/useStorage";
@@ -15,13 +16,22 @@ import { normalizeUrl } from "../utils/url";
 
 const capitalize = (value) => value.charAt(0).toUpperCase() + value.slice(1);
 
-export const QuizView = ({ active, page, setBanner, category, contextUsage, remaining, usagePercent, refreshUsage }) => {
+export const QuizView = ({ active, page, setBanner, category, refreshUsage, onQuizStatsChange }) => {
 	const normalizedUrl = page?.url ? normalizeUrl(page.url) : null;
 	const sessionKey = normalizedUrl ? `quiz:${normalizedUrl}` : null;
 
 	const [sessionQuiz, setSessionQuiz] = useStorage(sessionKey, { results: [] });
 	const [quiz, setQuiz] = useState(() => createInitialQuiz());
 	const [loading, setLoading] = useState(false);
+
+	useEffect(() => {
+		setQuiz(createInitialQuiz());
+	}, [normalizedUrl]);
+
+	useEffect(() => {
+		const stats = calculateQuizStats(sessionQuiz?.results || [], quiz);
+		onQuizStatsChange?.(stats);
+	}, [sessionQuiz, quiz, onQuizStatsChange]);
 
 	const results = sessionQuiz?.results || [];
 	const lastResult = results.length > 0 ? results[results.length - 1] : null;
@@ -207,29 +217,8 @@ export const QuizView = ({ active, page, setBanner, category, contextUsage, rema
 				</div>
 			)}
 
-			{showMeta && usagePercent > 0 && (
-				<div className="context-bar-wrapper">
-					<div className="context-bar">
-						<div
-							className={`context-bar-fill${usagePercent >= 85 ? " is-warning" : ""}`}
-							style={{ width: `${usagePercent}%` }}
-						/>
-					</div>
-					<span className="context-meta">
-						{contextUsage.toLocaleString()} used · {remaining != null ? remaining.toLocaleString() : "—"} left
-					</span>
-				</div>
-			)}
-
 			{quiz.status === "setup" && (
 				<div className="quiz-setup">
-					{lastResult && (
-						<p className="meta">
-							Last attempt ({capitalize(lastResult.mode)}): {lastResult.correct}/{lastResult.total} correct (
-							{lastResult.total ? Math.round((lastResult.correct / lastResult.total) * 100) : 0}%).
-						</p>
-					)}
-
 					<p className="field-label">Difficulty</p>
 
 					<div className="segmented" role="radiogroup" aria-label="Quiz difficulty">

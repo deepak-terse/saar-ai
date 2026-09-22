@@ -42,16 +42,20 @@ export const ReadView = ({
 	const sessionKey = normalizedUrl ? `read:${normalizedUrl}` : null;
 
 	// Storage hooks
-	const [sessionRead, setSessionRead] = useStorage(sessionKey, { summaries: {} });
+	const [sessionRead, setSessionRead] = useStorage(sessionKey, { summaries: {}, activeMode: null });
 	const [pageRecord] = useStorage(normalizedUrl, null);
 	const [siteVisited] = useStorage("siteVisited", 0);
 	const [secondsSaved] = useStorage("secondsSaved", 0);
 
-	// Local component state
-	const [activeMode, setActiveMode] = useState(null);
+	// Derived and transient state
+	const activeMode = sessionRead?.activeMode || (Object.keys(sessionRead?.summaries || {})[0] ?? null);
 	const [streaming, setStreaming] = useState(false);
 	const [streamingText, setStreamingText] = useState("");
 	const [error, setError] = useState("");
+
+	const activeEngineRef = useRef(null);
+	const activeUrlRef = useRef(normalizedUrl);
+	activeUrlRef.current = normalizedUrl;
 
 	const modeStartTimeRef = useRef(Date.now());
 	const activeModeRef = useRef(activeMode);
@@ -83,14 +87,22 @@ export const ReadView = ({
 		ensurePageVisit(page.url, { words, category: category || 1 });
 	}, [page?.url, page?.wordCount, category]);
 
-	// Reset local view state when page changes
+	// Reset transient streaming and error state when page changes
 	useEffect(() => {
-		setActiveMode(null);
+		activeEngineRef.current?.destroy?.();
+		activeEngineRef.current = null;
 		setStreaming(false);
 		setStreamingText("");
 		setError("");
-		onSummaryStateChange?.({ hasSummary: false, minutesSaved: 0 });
-	}, [normalizedUrl, onSummaryStateChange]);
+	}, [normalizedUrl]);
+
+	// Cleanup active engine on unmount
+	useEffect(() => {
+		return () => {
+			activeEngineRef.current?.destroy?.();
+			activeEngineRef.current = null;
+		};
+	}, []);
 
 	// Commit reading time when leaving or changing mode
 	const commitReadingTime = async () => {
@@ -103,7 +115,10 @@ export const ReadView = ({
 
 	// Reading time tracking & subheader savings updater
 	useEffect(() => {
-		if (!page || !activeMode || (!currentSummary && !streaming)) return;
+		if (!page || !activeMode || (!currentSummary && !streaming)) {
+			onSummaryStateChange?.({ hasSummary: false, minutesSaved: 0 });
+			return;
+		}
 
 		modeStartTimeRef.current = Date.now();
 		const rawWords = page.wordCount;
@@ -130,7 +145,7 @@ export const ReadView = ({
 			clearInterval(timer);
 			commitReadingTime();
 		};
-	}, [page, activeMode, currentSummary, streaming, pageRecord?.readingMetadata?.secondsRead]);
+	}, [page, activeMode, currentSummary, streaming, pageRecord?.readingMetadata?.secondsRead, onSummaryStateChange]);
 
 	// Handle window unload
 	useEffect(() => {
@@ -143,6 +158,7 @@ export const ReadView = ({
 		if (!page || streaming || !controlsEnabled) return;
 
 		const selectedMode = MODES[modeKey];
+		const targetUrl = normalizedUrl;
 		setStreaming(true);
 		setStreamingText("");
 		setStatus("busy");
@@ -158,6 +174,7 @@ export const ReadView = ({
 				}
 
 				const summarizer = await createSummarizer(selectedMode, setBanner);
+				activeEngineRef.current = summarizer;
 				setBanner(null);
 
 				const stream = summarizer.summarizeStreaming(page.text, {
@@ -168,11 +185,15 @@ export const ReadView = ({
 				});
 
 				for await (const chunk of stream) {
+					if (activeUrlRef.current !== targetUrl) break;
 					full += chunk;
 					setStreamingText(full);
 				}
 
 				summarizer?.destroy?.();
+				if (activeEngineRef.current === summarizer) {
+					activeEngineRef.current = null;
+				}
 			} else {
 				const availability = await getLanguageModelAvailability();
 				if (availability === "unavailable") {
@@ -193,6 +214,7 @@ export const ReadView = ({
 							});
 						},
 					});
+					activeEngineRef.current = session;
 
 					setBanner(null);
 
@@ -205,38 +227,52 @@ export const ReadView = ({
 
 					const stream = session.promptStreaming(prompt);
 					for await (const chunk of stream) {
+						if (activeUrlRef.current !== targetUrl) break;
 						full += chunk;
 						setStreamingText(full);
 					}
 				} finally {
 					refreshUsage?.(session);
 					session?.destroy?.();
+					if (activeEngineRef.current === session) {
+						activeEngineRef.current = null;
+					}
 				}
 			}
 
-			setSessionRead((prev) => ({
-				...prev,
-				summaries: {
-					...(prev?.summaries || {}),
-					[modeKey]: full,
-				},
-			}));
+			if (activeUrlRef.current === targetUrl && full) {
+				setSessionRead((prev) => ({
+					...prev,
+					activeMode: modeKey,
+					summaries: {
+						...(prev?.summaries || {}),
+						[modeKey]: full,
+					},
+				}));
+			}
 		} catch (err) {
-			setError(
-				err?.message?.startsWith("On-device AI isn't available")
-					? err.message
-					: `Couldn't generate this. ${friendlyError(err)}`
-			);
+			if (activeUrlRef.current === targetUrl) {
+				setError(
+					err?.message?.startsWith("On-device AI isn't available")
+						? err.message
+						: `Couldn't generate this. ${friendlyError(err)}`
+				);
+			}
 		} finally {
-			setStreaming(false);
-			setStatus("ready");
+			if (activeUrlRef.current === targetUrl) {
+				setStreaming(false);
+				setStatus("ready");
+			}
 		}
 	};
 
 	const handleModeClick = async (key) => {
 		if (!page || streaming || !controlsEnabled) return;
 		await commitReadingTime();
-		setActiveMode(key);
+		setSessionRead((prev) => ({
+			...prev,
+			activeMode: key,
+		}));
 		setError("");
 
 		const cached = sessionRead?.summaries?.[key];
@@ -245,7 +281,7 @@ export const ReadView = ({
 		}
 	};
 
-	const isSummaryActive = Boolean(activeMode && (displayOutput || streaming));
+	const isSummaryActive = Boolean(activeMode && (displayOutput || streaming || error));
 
 	return (
 		<section
@@ -274,34 +310,6 @@ export const ReadView = ({
 					);
 				})}
 			</div>
-
-			{isSummaryActive && (
-				<div className="output-toolbar">
-					<p className="meta">{page?.truncated ? "Summarized from the first part of this page" : ""}</p>
-					<button
-						type="button"
-						className="link-btn"
-						disabled={streaming}
-						onClick={() => activeMode && generate(activeMode)}
-					>
-						Regenerate
-					</button>
-				</div>
-			)}
-
-			{mode?.engine === "prompt" && usagePercent > 0 && displayOutput && (
-				<div className="context-bar-wrapper">
-					<div className="context-bar">
-						<div
-							className={`context-bar-fill${usagePercent >= 85 ? " is-warning" : ""}`}
-							style={{ width: `${usagePercent}%` }}
-						/>
-					</div>
-					<span className="context-meta">
-						{contextUsage.toLocaleString()} used · {remaining != null ? remaining.toLocaleString() : "—"} left
-					</span>
-				</div>
-			)}
 
 			{!isSummaryActive ? (
 				<div className="read-empty-container">

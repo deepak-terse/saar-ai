@@ -8,15 +8,19 @@ import { QuizView } from "./components/QuizView";
 import { usePageContent } from "./hooks/usePageContent";
 import { useAIContext } from "./hooks/useAIContext";
 import { supportsOnDeviceAI, getSummarizerAvailability } from "./services/ai";
+import { calculateQuizStats } from "./utils/quiz";
 import "./styles.css";
 
 const App = () => {
 	const [activeTab, setActiveTab] = useState("read");
-	const [status, setStatus] = useState("error");
+	const [status, setStatus] = useState("unavailable");
 	const [banner, setBanner] = useState(null);
 	const [aiReady, setAiReady] = useState(false);
 	const [controlsEnabled, setControlsEnabled] = useState(false);
 	const [summaryState, setSummaryState] = useState({ hasSummary: false, minutesSaved: 0 });
+	const [quizStats, setQuizStats] = useState(() => calculateQuizStats([], null));
+	const [aiStatus, setAiStatus] = useState("checking");
+	const [aiErrorText, setAiErrorText] = useState("");
 
 	const { contextWindow, contextUsage, remaining, usagePercent, refreshUsage } = useAIContext();
 
@@ -25,14 +29,81 @@ const App = () => {
 		setControlsEnabled(false);
 	}, []);
 
-	const { page, banner: pageBanner, category, classifying } = usePageContent({
+	const { page, error: pageError, category, classifying } = usePageContent({
 		onBeforeRefresh: beforeRefresh,
 	});
 
+	// Check on-device AI support & availability
 	useEffect(() => {
-		if (pageBanner) setBanner(pageBanner);
-		else if (page) setBanner(null);
-	}, [pageBanner, page]);
+		let cancelled = false;
+
+		const checkAvailability = async () => {
+			if (!supportsOnDeviceAI()) {
+				if (cancelled) return;
+				setAiStatus("unavailable");
+				setAiErrorText("This Chrome version doesn't support on-device AI. Update to Chrome 138+ to use Saar AI.");
+				return;
+			}
+
+			try {
+				const availability = await getSummarizerAvailability();
+				if (cancelled) return;
+
+				if (availability === "unavailable") {
+					setAiStatus("unavailable");
+					setAiErrorText("On-device AI isn't available on this device (check Chrome's hardware requirements).");
+					return;
+				}
+
+				setAiStatus("ready");
+				setAiErrorText("");
+			} catch {
+				if (!cancelled) {
+					setAiStatus("unavailable");
+					setAiErrorText("On-device AI isn't available on this device (check Chrome's hardware requirements).");
+				}
+			}
+		};
+
+		checkAvailability();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	// Centrally manage status and banner in App
+	useEffect(() => {
+		if (aiStatus === "checking") return;
+
+		if (aiStatus === "unavailable") {
+			setStatus("ai unavailable");
+			setAiReady(false);
+			setBanner({
+				kind: "error",
+				text: aiErrorText || "On-device AI isn't available on this device.",
+			});
+			return;
+		}
+
+		if (pageError) {
+			setStatus("unsupported");
+			setAiReady(false);
+			setBanner({
+				kind: "error",
+				text:
+					pageError === "unsupported"
+						? "Saar AI can't run on this page (browser or store pages are off-limits)."
+						: `Couldn't read this page: ${pageError}`,
+			});
+			return;
+		}
+
+		if (page) {
+			setStatus((current) => (current === "busy" ? "busy" : "ready"));
+			setAiReady(true);
+			setBanner((current) => (current?.kind === "error" ? null : current));
+		}
+	}, [aiStatus, aiErrorText, page, pageError]);
 
 	// Show a classifying banner while category detection is in progress.
 	useEffect(() => {
@@ -44,48 +115,6 @@ const App = () => {
 			);
 		}
 	}, [classifying, page, category]);
-
-	useEffect(() => {
-		let cancelled = false;
-
-		const checkAvailability = async () => {
-			if (!supportsOnDeviceAI()) {
-				setStatus("error");
-				setAiReady(false);
-				setBanner({
-					kind: "error",
-					text: "This Chrome version doesn't support on-device AI. Update to Chrome 138+ to use Saar AI.",
-				});
-				return;
-			}
-
-			try {
-				const availability = await getSummarizerAvailability();
-				if (cancelled) return;
-
-				if (availability === "unavailable") {
-					setStatus("error");
-					setAiReady(false);
-					setBanner({
-						kind: "error",
-						text: "On-device AI isn't available on this device (check Chrome's hardware requirements).",
-					});
-					return;
-				}
-
-				setStatus("ready");
-				setAiReady(true);
-			} catch {
-				if (!cancelled) {
-					setStatus("error");
-					setAiReady(false);
-				}
-			}
-		}
-
-		if (page) checkAvailability();
-		return () => { cancelled = true; };
-	}, [page]);
 
 	// Controls are enabled only when page is loaded, AI is ready, AND classification is complete.
 	useEffect(() => {
@@ -108,6 +137,7 @@ const App = () => {
 				contextUsage={contextUsage}
 				remaining={remaining}
 				usagePercent={usagePercent}
+				quizStats={quizStats}
 			/>
 			<Banner banner={banner} />
 			<Tabs activeTab={activeTab} onChange={setActiveTab} />
@@ -129,7 +159,17 @@ const App = () => {
 					onSummaryStateChange={setSummaryState}
 				/>
 				<AskView active={askTabActive} page={page} setBanner={setBanner} category={category} contextUsage={contextUsage} remaining={remaining} usagePercent={usagePercent} refreshUsage={refreshUsage} />
-				<QuizView active={quizTabActive} page={page} setBanner={setBanner} category={category} contextUsage={contextUsage} remaining={remaining} usagePercent={usagePercent} refreshUsage={refreshUsage} />
+				<QuizView
+					active={quizTabActive}
+					page={page}
+					setBanner={setBanner}
+					category={category}
+					contextUsage={contextUsage}
+					remaining={remaining}
+					usagePercent={usagePercent}
+					refreshUsage={refreshUsage}
+					onQuizStatsChange={setQuizStats}
+				/>
 			</main>
 		</>
 	);

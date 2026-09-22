@@ -1,6 +1,7 @@
 const hasChromeSession = () => typeof chrome !== "undefined" && Boolean(chrome.storage?.session);
 
 const listeners = new Set();
+const memoryCache = new Map();
 
 const notifyListeners = (key, value) => {
   listeners.forEach((fn) => {
@@ -16,24 +17,29 @@ if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === "session") {
       Object.entries(changes).forEach(([k, change]) => {
+        if (change.newValue === undefined) {
+          memoryCache.delete(k);
+        } else {
+          memoryCache.set(k, change.newValue);
+        }
         notifyListeners(k, change.newValue);
       });
     }
   });
 }
 
-export const getSessionItem = async (key) => {
+export const getSessionItemSync = (key) => {
   if (!key) return undefined;
-  if (hasChromeSession()) {
-    const res = await chrome.storage.session.get(key);
-    return res?.[key];
-  }
+  if (memoryCache.has(key)) return memoryCache.get(key);
   if (typeof sessionStorage !== "undefined") {
     const raw = sessionStorage.getItem(key);
     if (raw !== null) {
       try {
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        memoryCache.set(key, parsed);
+        return parsed;
       } catch {
+        memoryCache.set(key, raw);
         return raw;
       }
     }
@@ -41,8 +47,21 @@ export const getSessionItem = async (key) => {
   return undefined;
 };
 
+export const getSessionItem = async (key) => {
+  if (!key) return undefined;
+  if (memoryCache.has(key)) return memoryCache.get(key);
+  if (hasChromeSession()) {
+    const res = await chrome.storage.session.get(key);
+    const val = res?.[key];
+    if (val !== undefined) memoryCache.set(key, val);
+    return val;
+  }
+  return getSessionItemSync(key);
+};
+
 export const setSessionItem = async (key, value) => {
   if (!key) return;
+  memoryCache.set(key, value);
   if (hasChromeSession()) {
     await chrome.storage.session.set({ [key]: value });
     return;
@@ -55,6 +74,7 @@ export const setSessionItem = async (key, value) => {
 
 export const removeSessionItem = async (key) => {
   if (!key) return;
+  memoryCache.delete(key);
   if (hasChromeSession()) {
     await chrome.storage.session.remove(key);
     return;

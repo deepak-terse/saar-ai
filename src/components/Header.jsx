@@ -1,3 +1,13 @@
+import { calculateQuizStats } from "../utils/quiz";
+
+const STATUS_TITLES = {
+	ready: "Ready",
+	unsupported: "Unsupported",
+	unavailable: "Unavailable",
+	error: "Unavailable",
+	busy: "Working…",
+};
+
 export const Header = ({
 	status,
 	contextWindow,
@@ -8,41 +18,42 @@ export const Header = ({
 	contextUsage = 0,
 	remaining = null,
 	usagePercent = 0,
-	quizMastery = { correct: 0, total: 0 },
+	quizStats = null,
+	quizMastery = null,
 }) => {
-	const title =
-		status === "ready"
-			? "On-device AI ready"
-			: status === "busy"
-			? "Working…"
-			: "On-device AI unavailable";
+	const title = STATUS_TITLES[status] || "Unavailable";
 
 	const rawWords = page?.wordCount;
 	const wordCount =
 		typeof rawWords === "number"
 			? rawWords
 			: Array.isArray(rawWords)
-			? rawWords.length
-			: page?.text
-			? page.text.trim().split(/\s+/).filter(Boolean).length
-			: 0;
+				? rawWords.length
+				: page?.text
+					? page.text.trim().split(/\s+/).filter(Boolean).length
+					: 0;
 	const readTime = wordCount > 0 ? Math.max(1, Math.round(wordCount / 200)) : 0;
 	const displayMinutesSaved = minutesSaved > 0 ? minutesSaved : (readTime > 1 ? Math.max(1, readTime - 1) : 1);
+
+	const currentQuizStats =
+		quizStats ||
+		(quizMastery
+			? calculateQuizStats([{ mode: "medium", correct: quizMastery.correct, total: quizMastery.total }])
+			: calculateQuizStats([], null));
 
 	return (
 		<header className="app-header">
 			<div className="app-header-top">
-				<div className="brand">
-					<span className="brand-mark" aria-hidden="true" />
-					<span className="brand-name">Saar AI</span>
-				</div>
 				<div className="app-header-actions">
+					<span className={`status-dot ${status}`} title={title} />
+					<span className="status-label">{title}</span>
+				</div>
+				<div className="brand">
 					{contextWindow != null && (
 						<span className="context-badge" title="Total context window for the on-device model">
-							{contextWindow.toLocaleString()} tokens
+							Context: {contextWindow.toLocaleString()} tokens
 						</span>
 					)}
-					<span className={`status-dot ${status}`} title={title} />
 				</div>
 			</div>
 
@@ -52,7 +63,9 @@ export const Header = ({
 						<div className="subheader-reward-banner" role="status" aria-live="polite">
 							<span className="reward-icon" aria-hidden="true">🎉</span>
 							<span className="reward-text">
-								<strong>{displayMinutesSaved} {displayMinutesSaved === 1 ? "Minute" : "Minutes"} Saved</strong> on this page
+								<strong>{displayMinutesSaved} {displayMinutesSaved === 1 ? "Minute" : "Minutes"} saved</strong>
+								<span className="meta-bullet" aria-hidden="true">•</span>
+								<span className="meta-item">{readTime} min original read</span>
 							</span>
 						</div>
 					) : wordCount > 0 ? (
@@ -86,11 +99,29 @@ export const Header = ({
 				)}
 
 				{activeTab === "quiz" && (
-					<div className="subheader-quiz-mastery" role="status">
-						<span className="mastery-icon" aria-hidden="true">🧠</span>
-						<span className="mastery-text">
-							Mastery: <strong>{quizMastery?.correct ?? 0} / {quizMastery?.total ?? 0} Correct</strong>
-						</span>
+					<div className="subheader-quiz-stats" role="status" aria-label="Quiz performance summary">
+						<div className="subheader-quiz-row subheader-quiz-summary">
+							<span className="quiz-stat-item">{currentQuizStats.totalCorrect}/{currentQuizStats.totalAnswered} correct</span>
+							<span className="quiz-bullet" aria-hidden="true">·</span>
+							<span className="quiz-stat-item">{currentQuizStats.percentage}%</span>
+							<span className="quiz-bullet" aria-hidden="true">·</span>
+							<span className={`quiz-adjective ${currentQuizStats.adjectiveClass || ""}`}>
+								{currentQuizStats.adjective}
+							</span>
+						</div>
+						<div className="subheader-quiz-row subheader-quiz-breakdown">
+							<span className="quiz-breakdown-item">
+								Easy {currentQuizStats.breakdown?.easy?.correct ?? 0}/{currentQuizStats.breakdown?.easy?.total ?? 0}
+							</span>
+							<span className="quiz-bullet" aria-hidden="true">·</span>
+							<span className="quiz-breakdown-item">
+								Medium {currentQuizStats.breakdown?.medium?.correct ?? 0}/{currentQuizStats.breakdown?.medium?.total ?? 0}
+							</span>
+							<span className="quiz-bullet" aria-hidden="true">·</span>
+							<span className="quiz-breakdown-item">
+								Hard {currentQuizStats.breakdown?.hard?.correct ?? 0}/{currentQuizStats.breakdown?.hard?.total ?? 0}
+							</span>
+						</div>
 					</div>
 				)}
 			</div>

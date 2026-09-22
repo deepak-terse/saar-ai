@@ -1,4 +1,4 @@
-import { getSessionItem, setSessionItem, removeSessionItem, subscribeSessionStorage } from "./sessionStorage.js";
+import { getSessionItem, getSessionItemSync, setSessionItem, removeSessionItem, subscribeSessionStorage } from "./sessionStorage.js";
 import { getLocalItem, setLocalItem, removeLocalItem, subscribeLocalStorage } from "./localStorage.js";
 import { getIndexDBItem, setIndexDBItem, removeIndexDBItem, subscribeIndexedDB } from "./indexedDB.js";
 
@@ -18,7 +18,6 @@ export const resolveStorageType = (key) => {
 		if (
 			key.startsWith("ask:") ||
 			key.startsWith("read:") ||
-			key.startsWith("quiz:") ||
 			key.startsWith("session:") ||
 			key.startsWith("cache:") ||
 			key.startsWith("saar:")
@@ -70,6 +69,14 @@ const getService = (type) => {
 export const getStorageItem = (key) => {
 	const type = resolveStorageType(key);
 	return getService(type).getItem(key);
+};
+
+export const getStorageItemSync = (key) => {
+	const type = resolveStorageType(key);
+	if (type === STORAGE_TYPES.SESSION) {
+		return getSessionItemSync(key);
+	}
+	return undefined;
 };
 
 export const setStorageItem = (key, value) => {

@@ -4,7 +4,7 @@ import { classifyPageCategory } from "../services/classify";
 
 export const usePageContent = ({ onBeforeRefresh } = {}) => {
 	const [page, setPage] = useState(null);
-	const [banner, setBanner] = useState(null);
+	const [error, setError] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [category, setCategory] = useState(null);
 	const [classifying, setClassifying] = useState(false);
@@ -12,6 +12,7 @@ export const usePageContent = ({ onBeforeRefresh } = {}) => {
 	const refresh = useCallback(async () => {
 		onBeforeRefresh?.();
 		setLoading(true);
+		setError(null);
 		setCategory(null);
 		setClassifying(false);
 
@@ -19,18 +20,12 @@ export const usePageContent = ({ onBeforeRefresh } = {}) => {
 
 		if (!result?.ok) {
 			setPage(null);
-			setBanner({
-				kind: "error",
-				text:
-					result?.error === "unsupported-page"
-						? "Saar AI can't run on this page (browser or store pages are off-limits)."
-						: `Couldn't read this page: ${result?.error || "unknown error"}`,
-			});
+			setError(result?.error || "unknown error");
 			setLoading(false);
 			return null;
 		}
 
-		setBanner(null);
+		setError(null);
 		setPage(result);
 		setLoading(false);
 		return result;
@@ -73,5 +68,5 @@ export const usePageContent = ({ onBeforeRefresh } = {}) => {
 		}
 	}, [refresh]);
 
-	return { page, banner, setBanner, loading, refresh, category, classifying };
+	return { page, error, loading, refresh, category, classifying };
 }

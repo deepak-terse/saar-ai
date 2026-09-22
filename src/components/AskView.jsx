@@ -166,19 +166,6 @@ export const AskView = ({ active, page, setBanner, category, contextUsage, remai
 			</div>
 
 			<form className="chat-form" onSubmit={sendMessage}>
-				{sessionRef.current && usagePercent > 0 && (
-					<div className="context-bar-wrapper" style={{ width: "100%", paddingBottom: 0 }}>
-						<div className="context-bar">
-							<div
-								className={`context-bar-fill${usagePercent >= 85 ? " is-warning" : ""}`}
-								style={{ width: `${usagePercent}%` }}
-							/>
-						</div>
-						<span className="context-meta">
-							{contextUsage.toLocaleString()} used · {remaining != null ? remaining.toLocaleString() : "—"} left
-						</span>
-					</div>
-				)}
 				<textarea
 					className="chat-input"
 					rows={1}
