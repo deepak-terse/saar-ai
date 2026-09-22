@@ -6,13 +6,13 @@
 
 > A Chrome extension that turns any web page into a focused reading experience — entirely on-device.
 
-Saar AI runs as a side panel in Chrome. It reads the current page, generates concise summaries in multiple formats, answers your questions about the content, and lets you test your understanding with a quiz — without sending any data to the cloud.
+Saar AI sits in Chrome's side panel. It reads the current page, classifies the content type, generates summaries in eight formats, answers questions grounded in the page, and tests your understanding with adaptive quizzes. No data leaves your machine.
 
 ```text
-Page → Extract → Summarise → Ask → Quiz
+Page → Extract → Classify → Summarise → Ask → Quiz
 ```
 
-## Why this project exists
+## The Problem
 
 Reading on the web is full of distraction.
 
@@ -22,15 +22,23 @@ Saar AI is a practical response to that problem: sit alongside the page you are 
 
 The name *Saar* means essence or substance. That is the goal — extract only what is worth keeping.
 
+## The Idea
+
+The goal is not to replace reading. It is to make reading more intentional.
+
+Saar AI is an attempt to reduce the friction between opening a page and actually understanding it — by giving you the right summary format for your goal, a way to resolve doubts without leaving the page, and a lightweight check on whether you have genuinely absorbed what you read.
+
 ## What it does
 
-- 📖 Reads the active browser tab and extracts its text content
-- ✂️ Summarises the page in multiple modes — highlights, TL;DR, abstract, Q&A, and more
-- 💬 Answers your questions about the page in a persistent chat session
-- 🧪 Generates a multiple-choice quiz to test your comprehension
-- 🔒 Runs entirely on-device using Chrome's built-in AI — no data leaves your machine
-- ⚡ Streams responses in real time so you are never waiting at a blank screen
-- 💾 Caches summaries per page so switching modes is instant on revisit
+- **Reads** the active tab and extracts content using [Readability](https://github.com/mozilla/readability) with a custom fallback
+- **Classifies** the page — Article/Research, Blog/Opinion, or Story/Narrative — and adapts all prompts accordingly
+- **Summarises** in 8 modes: Highlights, TL;DR, Abstract, Limitations, Actions & Takeaways, Q&A, Glossary, Data Snapshot
+- **Answers** your questions in a persistent, page-grounded chat session with context-window monitoring
+- **Quizzes** you with structured MCQs at Easy / Medium / Hard difficulty, with coverage tracking and explanations
+- **Renders** rich output: Markdown, GFM tables, Mermaid charts, LaTeX math — with auto-repair for on-device model quirks
+- **Tracks** reading efficiency: minutes saved per page, lifetime hours saved, pages condensed
+- **Caches** everything per page so switching modes or revisiting is instant
+- **Runs offline** — Chrome's built-in Gemini Nano, no API key, no server
 
 ## Built for
 
@@ -39,98 +47,13 @@ The name *Saar* means essence or substance. That is the goal — extract only wh
 - Anyone who wants to read less and understand more
 - Privacy-conscious users who do not want content sent to external APIs
 
-## Why it stands out
-
-This project combines several real patterns in one small, focused tool:
-
-- On-device AI using Chrome's `Summarizer` and `LanguageModel` APIs — no paid API key, no server
-- Multiple summary formats driven by a single mode configuration, making it easy to extend
-- A structured quiz engine that chunks the page, tracks coverage, and adapts difficulty
-- A stateful chat session that keeps page context across the full conversation
-- Session-scoped caching so generated summaries survive tab switches without re-running the model
-- Built as a Chrome Manifest V3 extension with a React side panel
-
-It is not just a wrapper around an LLM prompt. It is a structured reading tool with real UX decisions baked in.
-
-## Architecture
-
-### Feature overview
-
-| Feature | What it does |
-|---|---|
-| Read | Summarises the page in the selected mode, streams the result, and caches it for the session |
-| Ask | Opens a grounded chat session scoped to the page — the model cannot make things up that are not in the content |
-| Quiz | Chunks the page into parts, generates structured MCQ questions via constrained output, and scores your answers |
-
-### Summary modes
-
-| Mode | Engine | Description |
-|---|---|---|
-| Highlights | Summarizer API | Key points, important facts, and notable insights |
-| TL;DR | Summarizer API | The shortest possible summary of what the page is saying |
-| Abstract | LanguageModel API | Structured overview: purpose, approach, key findings, conclusion |
-| Limitations | LanguageModel API | Gaps, caveats, and what the source does not establish |
-| Actions & Takeaways | LanguageModel API | Concrete next steps a reader can take from the content |
-| Q&A | LanguageModel API | The most important questions about the content, answered |
-| Glossary | LanguageModel API | Key technical or unfamiliar terms with plain definitions |
-| Data Snapshot | LanguageModel API | Numbers, metrics, and statistics extracted as a visual chart |
-
-### Component structure
-
-```text
-src/
-├── components/
-│   ├── Header.jsx       # Status indicator and branding
-│   ├── Banner.jsx       # Error and progress messages
-│   ├── Tabs.jsx         # Read / Ask / Quiz tab navigation
-│   ├── ReadView.jsx     # Summary mode selector and output
-│   ├── AskView.jsx      # Chat interface with streaming responses
-│   └── QuizView.jsx     # Quiz setup, question flow, and scoring
-├── constants/
-│   └── modes.js         # Mode definitions and quiz configuration
-├── hooks/
-│   └── usePageContent.js # Page extraction and refresh logic
-├── services/
-│   ├── ai.js            # Summarizer and LanguageModel wrappers
-│   └── chrome.js        # Session storage helpers
-└── utils/               # Rendering, quiz logic, and prompt helpers
-```
-
-## On-device by design
-
-Saar AI is intentionally built without any external API calls:
-
-- Chrome's built-in `Summarizer` API
-- Chrome's built-in `LanguageModel` API
-- React for the side panel UI
-- Vite for the build pipeline
-- Manifest V3 service worker for extension lifecycle
-
-No API key. No server. No data sent anywhere.
-
-## Example workflow
-
-```text
-You open a research paper
-      ↓
-Saar AI extracts the page text
-      ↓
-You pick "Highlights" — key points stream in
-      ↓
-You switch to "Limitations" — gaps and caveats appear instantly from cache
-      ↓
-You ask "What did the study control for?" in the Ask tab
-      ↓
-You take a Medium-difficulty quiz and score 4 out of 5
-```
-
 ## Getting started
 
 ### Prerequisites
 
-- [Chrome Canary](https://www.google.com/chrome/canary/) (recommended) or Chrome 138+ on supported hardware
+- [Chrome Canary](https://www.google.com/chrome/canary/) (recommended) or Chrome 138+
 - Node.js 18+
-- [pnpm](https://pnpm.io) for dependency management
+- [pnpm](https://pnpm.io)
 
 > **Note:** Chrome's built-in AI APIs are powered by Gemini Nano and require compatible hardware (22 GB+ disk space, 4 GB+ VRAM). Availability on stable Chrome varies by region and device. [Chrome Canary](https://www.google.com/chrome/canary/) is the most reliable way to access these APIs regardless of region.
 
@@ -144,7 +67,7 @@ chrome://flags/#prompt-api-for-gemini-nano           → set to Enabled
 chrome://flags/#summarization-api-for-gemini-nano    → set to Enabled
 ```
 
-Relaunch Chrome after changing the flags. The first time you generate a summary, Chrome will download the Gemini Nano model in the background — this is a one-time setup.
+Relaunch Chrome. The first summary triggers a one-time Gemini Nano model download.
 
 For full setup instructions and hardware requirements, refer to the official documentation:
 
@@ -152,69 +75,41 @@ For full setup instructions and hardware requirements, refer to the official doc
 - [Prompt API for extensions](https://developer.chrome.com/docs/extensions/ai/prompt-api)
 - [Summarization API](https://developer.chrome.com/docs/ai/summarizer-api)
 
-### Installation
+### Install and run
 
 ```bash
 git clone https://github.com/deepak-terse/saar-ai
 cd saar-ai
 pnpm install
-```
-
-### Build the extension
-
-```bash
 pnpm build
 ```
 
-This outputs the extension to the `dist/` directory.
+1. Open `chrome://extensions` → enable **Developer mode**
+2. Click **Load unpacked** → select the `dist/` folder
+3. Navigate to any page → click the Saar AI icon
 
-### Load into Chrome
+For development: `pnpm dev`, then rebuild and reload the extension after changes.
 
-1. Open `chrome://extensions`
-2. Enable **Developer mode** (top right)
-3. Click **Load unpacked** and select the `dist/` folder
-4. Navigate to any web page and click the Saar AI icon to open the side panel
+## Tech stack
 
-### Development
+| Layer | Technology |
+|---|---|
+| AI | Chrome Summarizer API, Chrome LanguageModel API (Gemini Nano) |
+| Content extraction | [@mozilla/readability](https://github.com/mozilla/readability) + custom fallback |
+| Rendering | react-markdown, remark-gfm, remark-math, rehype-katex, Mermaid |
+| Storage | Three-tier: session (chrome.storage.session), local (chrome.storage.local), persistent (IndexedDB) |
+| UI | React 19, Vite, Manifest V3 side panel |
 
-```bash
-pnpm dev
-```
+## Documentation
 
-For extension development, rebuild after changes and reload the extension in `chrome://extensions`.
-
-## Why it matters
-
-The goal is not to replace reading. It is to make reading more intentional.
-
-Saar AI is an attempt to reduce the friction between opening a page and actually understanding it — by giving you the right summary format for your goal, a way to resolve doubts without leaving the page, and a lightweight check on whether you have genuinely absorbed what you read.
-
-## Roadmap
-
-- Highlight and annotate key passages directly on the page
-- Export summaries and quiz results to Markdown or clipboard
-- Support for PDF documents opened in Chrome
-- Persistent history of summaries across sessions
-- Per-site reading preferences and mode defaults
-- Keyboard shortcuts for all core actions
-
-## Contributing
-
-Contributions are welcome.
-
-This project is a focused, end-to-end reading tool built on Chrome's on-device AI APIs, with opportunities in:
-
-- new summary modes and prompt design
-- quiz difficulty calibration and coverage tracking
-- page content extraction for complex layouts
-- accessibility and keyboard navigation
-- support for additional content types
-
-If you are interested in improving the reading experience, open an issue or submit a pull request.
+| Document | What it covers |
+|---|---|
+| [Architecture](docs/ARCHITECTURE.md) | System design, component structure, data flow, and storage model |
+| [Implementation](docs/IMPLEMENTATION.md) | Feature-level flows for Read, Ask, Quiz, and content extraction |
 
 ## License
 
-This project is open source and intended for learning, experimentation, and personal productivity.
+MIT — open source for learning, experimentation, and personal productivity.
 
 ---
 

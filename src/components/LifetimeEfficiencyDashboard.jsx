@@ -31,7 +31,7 @@ export const LifetimeEfficiencyDashboard = ({ metrics }) => {
 					<span className="lifetime-icon" aria-hidden="true">📄</span>
 					<div className="lifetime-text-group">
 						<span className="lifetime-number">{sitesCount}</span>
-						<span className="lifetime-unit">Sites Visited</span>
+						<span className="lifetime-unit">Sites Summarised</span>
 					</div>
 				</div>
 			</div>
