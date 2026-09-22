@@ -696,6 +696,18 @@ textarea {
 	background: none;
 }
 
+/* Math (KaTeX) */
+.markdown-output .katex-display {
+	overflow-x: auto;
+	overflow-y: hidden;
+	padding: 4px 0;
+	margin: 8px 0;
+}
+
+.markdown-output .katex {
+	font-size: 1em;
+}
+
 /* Mermaid */
 .mermaid-container {
 	margin: 12px 0;
@@ -833,16 +845,19 @@ textarea {
 }
 
 .msg {
-	max-width: 90%;
+	max-width: 100%;
 }
 
 .msg-user {
 	align-self: flex-end;
+	max-width: 85%;
 	background: var(--ink);
 	color: var(--paper);
 	padding: 8px 12px;
 	border-radius: var(--radius);
 	font-size: 13.5px;
+	white-space: pre-wrap;
+	word-break: break-word;
 }
 
 .msg-assistant {
@@ -850,13 +865,25 @@ textarea {
 	font-family: var(--font-serif);
 	font-size: 15px;
 	line-height: 1.6;
-	white-space: pre-wrap;
+	width: 100%;
+	max-width: 62ch;
+}
+
+.msg-assistant strong {
+	font-family: var(--font-sans);
+	font-weight: 700;
+	color: var(--ink);
+}
+
+.msg-assistant .markdown-output p:last-child {
+	margin-bottom: 0;
 }
 
 .msg-assistant.is-error {
 	font-family: var(--font-sans);
 	color: var(--error);
 	font-size: 13px;
+	white-space: pre-wrap;
 }
 
 .chat-form {

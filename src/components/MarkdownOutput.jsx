@@ -1,6 +1,9 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import mermaid from "mermaid";
 import { sanitizeMarkdown } from "../utils/sanitizeMarkdown";
 
@@ -117,7 +120,11 @@ export const MarkdownOutput = ({ text }) => {
 
   return (
     <div className="markdown-output">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+        components={markdownComponents}
+      >
         {cleaned}
       </ReactMarkdown>
     </div>

@@ -42,7 +42,11 @@ export const QuizView = ({ active, page, setBanner, category, refreshUsage, onQu
 
 	const startQuiz = async () => {
 		if (!page) return;
-		const parts = chunkPageIntoParts(page.text, QUIZ_PARTS);
+		// Limit text so the full quiz prompt (all parts + instructions + schema + response)
+		// fits within the model's ~8K-token context window.
+		const maxQuizChars = 10000;
+		const quizText = page.text.length > maxQuizChars ? page.text.slice(0, maxQuizChars).trim() : page.text;
+		const parts = chunkPageIntoParts(quizText, QUIZ_PARTS);
 		const next = {
 			...createInitialQuiz(quiz.difficulty),
 			parts,
