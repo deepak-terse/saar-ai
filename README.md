@@ -18,30 +18,33 @@ Page → Extract → Classify → Summarise → Ask → Quiz
 ## The Problem
 
 Reading on the web is full of distraction.
+You open an article, a paper, or a long thread with the intention of learning something. But by the time you reach the end, it is not always clear what the key point was, what you should take away from it, or whether you actually understood it.
 
-You open an article, a paper, or a long thread, and by the time you reach the end you are not always sure what the key point was, what you should do with it, or whether you actually understood it. There is no quick way to get a different angle on the same content, no way to ask a question without switching tabs, and nothing to help you check whether anything stuck.
+The problem is not a lack of information. It is the friction around consuming it.
 
-Saar AI is a practical response to that problem: sit alongside the page you are already reading, offer the content in the format that suits your goal, let you ask questions without leaving, and give you a way to verify your understanding before moving on.
+When something is unclear, you have to leave the page to find an explanation. When you want a different perspective, you have to search for one. When you finish reading, there is rarely an easy way to tell whether you actually absorbed anything.
 
-The name *Saar* means essence or substance. That is the goal — extract only what is worth keeping.
+The result is that reading can become passive: you spend time consuming content without necessarily turning it into understanding.
 
-## The Idea
+## The Solution
 
 The goal is not to replace reading. It is to make reading more intentional.
+Saar AI is built around the idea that understanding should happen where reading happens — without breaking the flow.
 
-Saar AI is an attempt to reduce the friction between opening a page and actually understanding it — by giving you the right summary format for your goal, a way to resolve doubts without leaving the page, and a lightweight check on whether you have genuinely absorbed what you read.
+It sits alongside the page you are already reading and gives you different ways to engage with the same content depending on what you need: get the essence, explore a different perspective, resolve a doubt, or test whether you actually understood what you read.
+
+The name Saar means essence or substance. That captures the core idea: **extract what is worth keeping, then help you make it stick.**
 
 ## What it does
 
-- **Reads** the active tab and extracts content using [Readability](https://github.com/mozilla/readability) with a custom fallback
-- **Classifies** the page — Article/Research, Blog/Opinion, or Story/Narrative — and adapts all prompts accordingly
-- **Summarises** in 8 modes: Highlights, TL;DR, Abstract, Limitations, Actions & Takeaways, Q&A, Glossary, Data Snapshot
-- **Answers** your questions in a persistent, page-grounded chat session with context-window monitoring
-- **Quizzes** you with structured MCQs at Easy / Medium / Hard difficulty, with coverage tracking and explanations
-- **Renders** rich output: Markdown, GFM tables, Mermaid charts, LaTeX math — with auto-repair for on-device model quirks
-- **Tracks** reading efficiency: minutes saved per page, lifetime hours saved, pages condensed
-- **Caches** everything per page so switching modes or revisiting is instant
-- **Runs offline** — Chrome's built-in Gemini Nano, no API key, no server
+- 📖 Reads the active browser tab and extracts its content
+- ✂️ Summarises pages in multiple modes — Highlights, TL;DR, Abstract, Q&A, and more
+- 💬 Answers questions about the page in a persistent, page-grounded chat
+- 🧪 Quizzes you with multiple-choice questions to test comprehension
+- 📊 Presents rich content including tables, diagrams, and mathematical notation
+- 🔒 Runs entirely on-device using Chrome's built-in AI — no API key or server required
+- ⚡ Streams responses in real time
+- 💾 Caches results per page so revisiting and switching modes is instant
 
 ## Built for
 
@@ -49,6 +52,30 @@ Saar AI is an attempt to reduce the friction between opening a page and actually
 - Developers reviewing documentation or technical articles
 - Anyone who wants to read less and understand more
 - Privacy-conscious users who do not want content sent to external APIs
+
+## Engineering Highlights
+
+- On-device AI — Chrome's Summarizer + LanguageModel APIs; no backend or API key
+- Resilient extraction — Readability with a custom DOM fallback and content cleanup pipeline
+- Context-aware generation — Content classification drives category-specific AI behavior
+- Structured AI output — Constrained JSON schemas with runtime validation for quizzes
+- Stateful AI sessions — Page-grounded chat with context-window monitoring and overflow handling
+- Three-tier storage — Session, local, and IndexedDB unified behind a single storage layer
+- Defensive rendering — Sanitizes and repairs AI-generated Markdown, Mermaid, and tables
+- Streaming UX — Incremental AI responses with partial rendering
+- Configuration-driven features — Summary modes and prompt behavior defined through reusable configuration
+- MV3 architecture — React side panel with clear separation of UI, AI, storage, and content services
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| AI | Chrome Summarizer API, Chrome LanguageModel API (Gemini Nano) |
+| Content extraction | [@mozilla/readability](https://github.com/mozilla/readability) + custom fallback |
+| Rendering | react-markdown, remark-gfm, remark-math, rehype-katex, Mermaid |
+| Storage | Three-tier: session (chrome.storage.session), local (chrome.storage.local), persistent (IndexedDB) |
+| UI | React 19, Vite, Manifest V3 side panel |
+
 
 ## Getting started
 
@@ -92,16 +119,6 @@ pnpm build
 3. Navigate to any page → click the Saar AI icon
 
 For development: `pnpm dev`, then rebuild and reload the extension after changes.
-
-## Tech stack
-
-| Layer | Technology |
-|---|---|
-| AI | Chrome Summarizer API, Chrome LanguageModel API (Gemini Nano) |
-| Content extraction | [@mozilla/readability](https://github.com/mozilla/readability) + custom fallback |
-| Rendering | react-markdown, remark-gfm, remark-math, rehype-katex, Mermaid |
-| Storage | Three-tier: session (chrome.storage.session), local (chrome.storage.local), persistent (IndexedDB) |
-| UI | React 19, Vite, Manifest V3 side panel |
 
 ## Documentation
 
