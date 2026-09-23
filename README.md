@@ -15,7 +15,7 @@ Saar AI sits in Chrome's side panel. It reads the current page, classifies the c
 Page → Extract → Classify → Summarise → Ask → Quiz
 ```
 
-### 🎥 Demo
+## Demo
 
 [![Saar AI Demo](https://img.youtube.com/vi/7Qo9GdmoIu8/maxresdefault.jpg)](https://youtu.be/7Qo9GdmoIu8)
 
