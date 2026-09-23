@@ -63,6 +63,17 @@ The name Saar means essence or substance. That captures the core idea: **extract
 - Configuration-driven features — Summary modes and prompt behavior defined through reusable configuration
 - MV3 architecture — React side panel with clear separation of UI, AI, storage, and content services
 
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| AI | Chrome Summarizer API, Chrome LanguageModel API (Gemini Nano) |
+| Content extraction | [@mozilla/readability](https://github.com/mozilla/readability) + custom fallback |
+| Rendering | react-markdown, remark-gfm, remark-math, rehype-katex, Mermaid |
+| Storage | Three-tier: session (chrome.storage.session), local (chrome.storage.local), persistent (IndexedDB) |
+| UI | React 19, Vite, Manifest V3 side panel |
+
+
 ## Getting started
 
 ### Prerequisites
@@ -105,16 +116,6 @@ pnpm build
 3. Navigate to any page → click the Saar AI icon
 
 For development: `pnpm dev`, then rebuild and reload the extension after changes.
-
-## Tech stack
-
-| Layer | Technology |
-|---|---|
-| AI | Chrome Summarizer API, Chrome LanguageModel API (Gemini Nano) |
-| Content extraction | [@mozilla/readability](https://github.com/mozilla/readability) + custom fallback |
-| Rendering | react-markdown, remark-gfm, remark-math, rehype-katex, Mermaid |
-| Storage | Three-tier: session (chrome.storage.session), local (chrome.storage.local), persistent (IndexedDB) |
-| UI | React 19, Vite, Manifest V3 side panel |
 
 ## Documentation
 
