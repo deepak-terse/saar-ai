@@ -1,5 +1,5 @@
 <div align="center">
-<img src="./assets/icon128.png" alt="Saar AI Icon" width="100" height="100">
+<img src=".github/assets/icon128.png" alt="Saar AI Icon" width="100" height="100">
 <h1> Saar AI</h1>
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT)
